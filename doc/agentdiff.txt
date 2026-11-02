@@ -1,0 +1,364 @@
+*agentdiff.txt*    Review the changes AI agents make, the way VS Code does
+
+                                                    *agentdiff*
+
+An AI agent (Claude Code, Copilot CLI, Codex, …) runs in another tmux pane
+and writes straight to disk. agentdiff shows every one of those changes
+inline as a pending diff that you can step through and keep or undo, per
+change, per file or all at once. Edits you make in Neovim are never part of
+the review. No agent needs any configuration.
+
+==============================================================================
+CONTENTS                                           *agentdiff-contents*
+
+    1. Requirements ...................... |agentdiff-requirements|
+    2. Setup ............................. |agentdiff-setup|
+    3. Options ........................... |agentdiff-options|
+    4. Reviewing ......................... |agentdiff-reviewing|
+    5. Command ........................... |:Agentdiff|
+    6. Lua API ........................... |agentdiff-api|
+    7. Panel ............................. |agentdiff-panel|
+    8. Events and statusline ............. |agentdiff-events|
+    9. Highlights ........................ |agentdiff-highlights|
+   10. Integrations ...................... |agentdiff-integrations|
+   11. Who changed what .................. |agentdiff-attribution|
+   12. The store ......................... |agentdiff-store|
+   13. Limitations ....................... |agentdiff-limitations|
+
+==============================================================================
+1. REQUIREMENTS                                *agentdiff-requirements*
+
+- Neovim 0.12 or newer.
+- `git` on `PATH`. It is used only as a content store in a private directory;
+  the project doesn't have to be a git repository, and if it is, agentdiff
+  never writes to its `.git`.
+- No other plugins.
+
+==============================================================================
+2. SETUP                                              *agentdiff-setup*
+
+>lua
+    require("agentdiff").setup({
+      keymaps = {
+        next = "]a", prev = "[a",
+        next_file = "]A", prev_file = "[A",
+        keep = "<leader>rk", undo = "<leader>ru",
+        keep_file = "<leader>rK", undo_file = "<leader>rU",
+        keep_all = "<leader>ra", undo_all = "<leader>rA",
+        panel = "<leader>rr", view = "<leader>rv",
+        overlay = "<leader>rh", resolve = "<leader>rc",
+      },
+    })
+<
+No keymaps are created unless you pass them. `keep` and `undo` are also
+mapped in visual mode, where they act on the selected lines.
+
+Review starts on |VimEnter| for the project of the current directory: the git
+toplevel, or the directory itself outside git. The home directory and `/` are
+never used as a project unless you set `root`.
+
+==============================================================================
+3. OPTIONS                                          *agentdiff-options*
+
+`keymaps`        (table|false, default `false`)
+                 `action = lhs` pairs. Actions: `next`, `prev`, `next_file`,
+                 `prev_file`, `keep`, `undo`, `keep_file`, `undo_file`,
+                 `keep_all`, `undo_all`, `panel`, `view`, `overlay`,
+                 `resolve`.
+
+`poll_interval`  (integer, default `1000`)
+                 ms between disk checks while Neovim is focused. `0` disables
+                 the timer (detection then runs on focus, |BufEnter| and
+                 `:Agentdiff refresh`).
+
+`settle`         (integer, default `300`)
+                 ms an unclaimed change waits before it is confirmed as the
+                 agent's.
+
+`claim_ttl`      (integer, default `10000`)
+                 ms an unused claim stays valid.
+
+`max_file_size`  (integer, default 1 MiB)
+                 larger files are reviewed as whole files.
+
+`max_files`      (integer, default `20000`)
+                 projects with more files are not reviewed (with a notice).
+
+`excludes`       (string[], default: build, cache and VCS directories)
+                 gitignore-style patterns never reviewed, on top of the
+                 project's `.gitignore` files.
+
+`state_dir`      (string, default `stdpath("state") .. "/agentdiff"`)
+                 where stores and the on/off state live.
+
+`root`           (string, default: git toplevel or cwd)
+                 force the project root.
+
+`confirm`        (boolean, default `true`)
+                 ask before keep-all / undo-all.
+
+`hint`           (boolean, default `true`)
+                 show the hint on the change nearest the cursor.
+
+`auto_start`     (boolean, default `true`)
+                 start on setup (on |VimEnter|).
+
+==============================================================================
+4. REVIEWING                                      *agentdiff-reviewing*
+
+When an agent changes a file, its buffer shows the change inline: removed
+lines as virtual lines, added lines highlighted. The buffer text is the file
+exactly as it is on disk; removed lines can't be edited or yanked.
+
+The change nearest the cursor carries a hint with its position among all
+pending changes and the keys that resolve it: >
+    agent 2/5 · <leader>rk keep · <leader>ru undo
+<
+Keep~
+    Accepts a change into the baseline. The file is not touched.
+
+Undo~
+    Restores the baseline content of a change, on disk. It goes through the
+    file's buffer (loaded hidden when needed), so |u| afterwards brings the
+    agent's change back as pending. When the buffer has unsaved edits of
+    yours, the result stays unsaved with them until you write the buffer.
+    Undoing a file the agent created deletes it; undoing a deletion restores
+    the file. Windows are never closed: they show another buffer instead.
+
+Scopes~
+    the change under the cursor, the selected lines (visual mode or a
+    range), the current file, or every file. Keep-all and undo-all ask
+    first.
+
+Editing~
+    Typing anywhere is yours and never becomes pending. An edit inside a
+    pending change becomes part of it: keep accepts your tweak, undo drops
+    it. Writing the buffer never keeps agent changes.
+
+Conflicts~
+    When an agent writes a file whose buffer has unsaved edits of yours,
+    non-overlapping changes are merged into the buffer (no prompt). When they
+    overlap, the buffer is left alone and the file is marked conflicted;
+    resolve it with `:Agentdiff resolve`: take the agent's version (your
+    edits are recoverable with |u|), keep yours (the agent's changes to the
+    file are undone on disk), or compare side by side.
+
+Views~
+    `:Agentdiff view` switches the current file between the inline overlay
+    and a side-by-side diff against a read-only baseline window. Keep and
+    undo work from either window. `:Agentdiff overlay` hides or shows the
+    overlay without resolving anything.
+
+==============================================================================
+5. COMMAND                                                *:Agentdiff*
+
+:[range]Agentdiff [subcommand]
+
+    Without a subcommand: toggle the panel. Subcommands complete with <Tab>.
+
+    next / prev                 next / previous change, across files
+    next_file / prev_file       next / previous changed file
+    keep / undo                 the change under the cursor; with a range,
+                                only the pending lines in it
+    keep_file / undo_file       every change in the current file
+    keep_all / undo_all         every change in every file (asks first)
+    panel                       toggle the changed-files panel
+    view                        toggle inline / side-by-side
+    overlay                     hide / show the overlay
+    resolve                     resolve a conflicted file
+    refresh                     check the disk now
+    toggle / enable / disable   turn review on / off (persisted)
+    status                      show the pending summary
+
+==============================================================================
+6. LUA API                                              *agentdiff-api*
+
+All functions live on `require("agentdiff")`.
+
+setup({opts})                                          *agentdiff.setup()*
+    Configure; starts reviewing unless `auto_start = false`.
+
+start() / stop()                         *agentdiff.start()* *agentdiff.stop()*
+    Start or stop reviewing the current project, for this session only.
+
+enable() / disable() / toggle()                       *agentdiff.toggle()*
+    Turn review on or off, persisted across restarts and shared by every
+    project. Turning it back on starts each project clean from its current
+    files, so nothing changed while review was off is pending.
+
+enabled()                                            *agentdiff.enabled()*
+    True when review is on.
+
+next() / prev() / next_file() / prev_file()           *agentdiff.next()*
+    Navigation. `next()` past the last change of a file opens the next
+    changed file; past the last change of the last file it wraps with a
+    notice.
+
+open({path})                                            *agentdiff.open()*
+    Open a pending file at its first change.
+
+keep({opts}) / undo({opts})              *agentdiff.keep()* *agentdiff.undo()*
+    {opts} fields:
+      `scope`  "hunk" (default), "file" or "all"
+      `range`  { first, last } lines, with scope "hunk": only the pending
+               lines in that range. Removed lines count as selected when the
+               range starts at or above the change.
+      `path`   project-relative file (default: the current buffer)
+      `force`  with scope "all", skip the confirmation
+
+keep_file() / undo_file() / keep_all({opts}) / undo_all({opts})
+    Shorthands for the scopes above.
+
+resolve({choice})                                    *agentdiff.resolve()*
+    Resolve a conflicted file: "agent", "mine" or "compare"; asks when nil.
+
+panel() / toggle_view() / toggle_overlay()
+    Views, see |agentdiff-panel| and |agentdiff-reviewing|.
+
+claim({paths})                                         *agentdiff.claim()*
+    The next disk changes to these paths (absolute or project-relative) are
+    yours. For tools that write files directly. A directory claims every
+    file under it. A claim is used up by the change it covers.
+
+status()                                              *agentdiff.status()*
+    Statusline summary such as `3 files · 7 changes`, or "" when nothing is
+    pending.
+
+files()                                                *agentdiff.files()*
+    Pending files in navigation order: `path`, `status` ("modified",
+    "created", "deleted", "binary", "conflicted"), `added`, `removed`,
+    `hunks`.
+
+path_status({path})                              *agentdiff.path_status()*
+    "file" when the file has pending changes, "dir" when a directory
+    contains such a file at any depth, nil otherwise. Cheap enough to call
+    for every line of a file tree.
+
+==============================================================================
+7. PANEL                                              *agentdiff-panel*
+
+The panel lists every file with pending changes, its status letter (M
+modified, A created, D deleted, B binary or oversized, C conflicted) and its
+added/removed line counts, in navigation order.
+
+    <CR>, o    open the file at its first change
+    K / U      keep / undo the file under the cursor
+    gK / gU    keep / undo everything
+    R          check the disk now
+    q          close
+
+==============================================================================
+8. EVENTS AND STATUSLINE                             *agentdiff-events*
+
+                                                   *User_AgentdiffChanged*
+`User AgentdiffChanged` fires whenever the set of pending changes changes
+(detected, kept, undone, resolved). Use it to refresh a statusline or a file
+tree.
+
+|agentdiff.status()| is a statusline component. With lualine: >lua
+    sections = { lualine_x = { require("agentdiff").status } }
+<
+==============================================================================
+9. HIGHLIGHTS                                     *agentdiff-highlights*
+
+All groups are defined with `default = true`, so colorschemes can override
+them.
+
+    AgentdiffAdd        lines the agent added or changed     (DiffAdd)
+    AgentdiffDelete     removed lines, virtual               (DiffDelete)
+    AgentdiffHint       the hint on the nearest change       (Comment)
+    AgentdiffConflict   changes overlapping unsaved edits    (DiagnosticWarn)
+    AgentdiffTreeFile   file-tree mark of a changed file     (DiagnosticWarn)
+    AgentdiffTreeDir    file-tree mark of a directory        (DiagnosticWarn)
+
+==============================================================================
+10. INTEGRATIONS                                *agentdiff-integrations*
+
+agentdiff knows no other plugin. These are host-side recipes.
+
+oil.nvim~
+    Claim oil's file operations so renames and deletes aren't the agent's: >lua
+    vim.api.nvim_create_autocmd("User", {
+      pattern = { "OilActionsPre", "OilActionsPost" },
+      callback = function(ev)
+        local paths = {}
+        for _, a in ipairs(ev.data.actions or {}) do
+          for _, key in ipairs({ "url", "src_url", "dest_url" }) do
+            local p = type(a[key]) == "string" and a[key]:match("^oil://(.*)$")
+            if p then paths[#paths + 1] = p end
+          end
+        end
+        require("agentdiff").claim(paths)
+      end,
+    })
+<
+grug-far.nvim~
+    Claim each file right before grug-far rewrites it: >lua
+    require("grug-far").setup({
+      hooks = {
+        on_before_edit_file = function(on_finish, file)
+          require("agentdiff").claim({ vim.fn.fnamemodify(file.path, ":p") })
+          on_finish("success")
+        end,
+      },
+    })
+<
+neo-tree.nvim~
+    Add a component that shows a mark on changed files and on collapsed
+    directories containing one: >lua
+    local function agentdiff_component(_, node, _)
+      local st = require("agentdiff").path_status(node.path)
+      if not st or (st == "dir" and node:is_expanded()) then return {} end
+      return { text = "󰚩 ",
+        highlight = st == "file" and "AgentdiffTreeFile" or "AgentdiffTreeDir" }
+    end
+<
+    Register it in `filesystem.components`, add `{ "agentdiff" }` to the
+    file and directory renderers, and refresh the filesystem source on
+    |User_AgentdiffChanged|.
+
+==============================================================================
+11. WHO CHANGED WHAT                             *agentdiff-attribution*
+
+Every file has a baseline: the last version you agreed with. Pending changes
+are always baseline → current content.
+
+- A change on disk that Neovim did not make, and that nobody claimed, is the
+  agent's: the baseline stays, so the change becomes pending.
+- Anything Neovim does is yours: typing, |:w|, format-on-save, LSP edits,
+  shell commands run with |:!|, and tools that call |agentdiff.claim()|.
+  Your edits are merged into the baseline too.
+- Another Neovim instance on the same project: its writes are yours too.
+- git operations (checkout, pull, reset, stash) that move HEAD: files git put
+  back to HEAD's content are folded into the baseline.
+- Discards (`git restore`, `git checkout -- f`, lazygit's file or hunk
+  discard) only move a file toward its committed content: they are yours. An
+  agent edit moves away from HEAD, so it is shown even when it is staged.
+
+A newly seen, unclaimed change waits `settle` ms before it is confirmed as the
+agent's, so claims from other instances can arrive first.
+
+==============================================================================
+12. THE STORE                                           *agentdiff-store*
+
+Baselines live outside the project, one directory per project root, under
+`stdpath("state")/agentdiff/`: a private git directory (objects only, never
+committed to), `baseline.idx`, `observed.idx`, a `claims/` journal and a lock.
+Every Neovim instance on the project shares it, and it survives restarts, so
+pending changes are still there after |:restart| or a crash.
+
+Deleting the store is always safe: agentdiff rebuilds it from the files on
+disk, with nothing pending.
+
+==============================================================================
+13. LIMITATIONS                                   *agentdiff-limitations*
+
+- A program outside Neovim that isn't an agent (a build script in another
+  pane, another editor) is shown as an agent change unless its output is
+  ignored. Keep-file or keep-all dismisses it quickly.
+- Discarding unstaged changes while other changes to the same file are
+  staged moves the file toward the index, not HEAD, and is shown.
+- Files inside nested git repositories are not reviewed.
+- Very large projects (more than `max_files` files) are not reviewed.
+
+ vim:tw=78:ts=8:ft=help:norl:
