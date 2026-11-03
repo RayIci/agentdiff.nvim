@@ -26,5 +26,5 @@ agentdiff grew as 14 flat modules where concerns are tangled: `review.lua` (the 
 
 - Code: every module under `lua/agentdiff/` moves or splits (moved with `git mv` to keep history); tests update their internal `require` paths; new tests for the integrations and the dependency rule.
 - Docs: `README.md`, `doc/agentdiff.txt` (integrations section uses the modules), `docs/architecture.md` (module map and layers), new `docs/extending.md`.
-- The Neovim configuration that installs the plugin keeps working unchanged; it can later replace its own neo-tree/oil/grug-far helpers with the integration modules (a follow-up in that repository).
+- Hosts keep working unchanged; those that copied the documented neo-tree/oil/grug-far recipes can switch to the integration modules.
 - No new dependencies; no store migration.

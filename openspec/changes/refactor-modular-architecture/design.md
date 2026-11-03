@@ -85,7 +85,7 @@ Rule: a module may require only modules in its own layer or below. `core/` requi
 | `init.lua` command table | `command.lua` |
 | `init.lua` keymaps | `keymaps.lua` |
 | (new) | `harness/init.lua`: interface + registry |
-| host config helpers | `integrations/neotree.lua`, `integrations/oil.lua`, `integrations/grug_far.lua` |
+| recipes in `doc/agentdiff.txt` | `integrations/neotree.lua`, `integrations/oil.lua`, `integrations/grug_far.lua` |
 
 `init.lua` keeps `setup`, `start`/`stop` orchestration and re-exports the public API from the modules above, so `require("agentdiff").x` is unchanged.
 
@@ -134,7 +134,7 @@ Each integration exports plain functions and requires the other plugin lazily, i
 - `integrations.oil`: `paths(actions)` (pure: oil URLs → paths), `setup()` (claim on `OilActionsPre`/`OilActionsPost`).
 - `integrations.grug_far`: `on_before_edit_file(on_finish, file)`.
 
-They come straight from the host configuration's current `lua/plugins/agentdiff.lua`, including the `ipairs`-over-nil fix for oil moves.
+They implement the recipes documented in `doc/agentdiff.txt`, including the detail that oil's move actions have no `url` field (so the three URL fields are read by key, not with `ipairs`).
 
 ### D7. Migration order
 
@@ -155,8 +155,7 @@ Each step is one commit and leaves `make test`, `make fmt-check` and lua_ls clea
 - [A move breaks a lazy `require` that tests don't cover] → the layer test lists every `require("agentdiff.…")`, so a stale path also fails it; the real-config headless startup check runs at the end.
 - [The event bus changes redraw timing] → `refresh` still emits synchronously; overlay and hint redraw in the same tick as today.
 - [git history becomes harder to follow] → moves use `git mv` in separate commits from content edits, so `git log --follow` works.
-- [The host config still has its own neo-tree/oil/grug-far helpers] → harmless duplicates until the follow-up switches it to the integration modules.
 
 ## Migration Plan
 
-Internal only. Users see no difference; the host configuration needs no change. Rollback: revert the commits (each step is self-contained).
+Internal only. Users see no difference and hosts need no change. Rollback: revert the commits (each step is self-contained).

@@ -13,8 +13,8 @@ context: |
   Tests: headless, no framework: `make test` (nvim --headless -u NONE -l tests/run.lua).
   Every spec scenario gets a test named after it. Also `make fmt-check` (stylua) and
   lua-language-server must report no problems (modules carry LuaCATS annotations).
-  The user's Neovim config (~/.config/nvim) installs this plugin via vim.pack and owns
-  the host wiring and its specs there.
+  Hosts install it with any plugin manager (vim.pack, lazy.nvim) and wire keys and
+  integrations themselves; nothing outside this repository is part of its specs.
 githubCopilot:
   cloudAgent: false
 

@@ -44,10 +44,9 @@ Each group ends with `make test`, `make fmt-check` and lua_ls clean, and is comm
 
 - [ ] 8.1 Empty the layer test's allow-list; verify it passes
 - [ ] 8.2 Update `docs/architecture.md` (module map, layer diagram), `README.md` and `doc/agentdiff.txt` (integration modules replace the copy-paste recipes); add `docs/extending.md` (adding an attribution mode, a harness adapter, an integration); verify the API doc tests pass, `:helptags` reports no duplicates and every Mermaid block parses
-- [ ] 8.3 Start the real Neovim configuration headless with this checkout first on the runtimepath; verify review becomes ready, keymaps are mapped and `:messages` is empty
+- [ ] 8.3 Start Neovim headless with a full configuration that uses the plugin, with this checkout first on the runtimepath; verify review becomes ready, keymaps are mapped and `:messages` is empty
 
 ## Workflow follow-up
 
 - Archive this change after the tasks are done, syncing the `agent-change-review` delta.
-- In the Neovim configuration repository: replace the neo-tree, oil and grug-far helpers in `lua/plugins/agentdiff.lua` with the integration modules (a change in that repository).
 - Next change here: hooks attribution (`attribution/hooks.lua`, journal, `claude` and `copilot` adapters, `:Agentdiff hooks install|uninstall|status`).
