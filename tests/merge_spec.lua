@@ -1,4 +1,4 @@
-local merge = require("agentdiff.merge")
+local merge = require("agentdiff.core.merge")
 local L = merge.lines
 
 describe("merge.lines/join", function()

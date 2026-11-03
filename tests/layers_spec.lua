@@ -18,10 +18,6 @@ local levels = {
   { 5, "^keymaps$" },
   { 6, "^integrations%." },
   -- flat modules not moved yet, at the level they are moving to
-  { 0, "^merge$" },
-  { 0, "^store$" },
-  { 0, "^util$" },
-  { 0, "^session$" },
   { 0, "^review$" },
   { 1, "^claims$" },
   { 2, "^detect$" },

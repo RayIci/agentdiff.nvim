@@ -109,7 +109,7 @@ end
 function H.store(opts)
   local config = require("agentdiff.config")
   config.resolve(vim.tbl_extend("force", { auto_start = false, root = H.project }, opts or {}))
-  local store = require("agentdiff.store").open(H.project, config.options)
+  local store = require("agentdiff.core.store").open(H.project, config.options)
   local done
   store:snapshot(function(okk)
     done = okk

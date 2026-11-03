@@ -13,11 +13,11 @@
 local M = {}
 
 local claims = require("agentdiff.claims")
-local merge = require("agentdiff.merge")
+local merge = require("agentdiff.core.merge")
 local review = require("agentdiff.review")
-local session = require("agentdiff.session")
-local store_mod = require("agentdiff.store")
-local util = require("agentdiff.util")
+local session = require("agentdiff.core.session")
+local store_mod = require("agentdiff.core.store")
+local util = require("agentdiff.core.util")
 
 local uv = vim.uv
 

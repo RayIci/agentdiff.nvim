@@ -118,7 +118,7 @@ function M.rel_of_buf(s, buf)
   if name == "" then
     return nil
   end
-  local rel = require("agentdiff.util").relative(s.root, vim.uv.fs_realpath(name) or name)
+  local rel = require("agentdiff.core.util").relative(s.root, vim.uv.fs_realpath(name) or name)
   if rel and not M.reviewable(s, rel) then
     return nil
   end

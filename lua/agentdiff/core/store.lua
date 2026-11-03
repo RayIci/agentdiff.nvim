@@ -15,7 +15,7 @@
 ---@class AgentdiffStoreModule
 local M = {}
 
-local util = require("agentdiff.util")
+local util = require("agentdiff.core.util")
 
 local uv = vim.uv
 

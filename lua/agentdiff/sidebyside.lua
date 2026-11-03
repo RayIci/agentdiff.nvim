@@ -6,8 +6,8 @@ local M = {}
 
 local render = require("agentdiff.render")
 local review = require("agentdiff.review")
-local session = require("agentdiff.session")
-local util = require("agentdiff.util")
+local session = require("agentdiff.core.session")
+local util = require("agentdiff.core.util")
 
 ---@param lines string[]
 ---@return string[]

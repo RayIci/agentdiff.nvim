@@ -13,9 +13,9 @@ local config = require("agentdiff.config")
 local detect = require("agentdiff.detect")
 local render = require("agentdiff.render")
 local review = require("agentdiff.review")
-local session = require("agentdiff.session")
-local store_mod = require("agentdiff.store")
-local util = require("agentdiff.util")
+local session = require("agentdiff.core.session")
+local store_mod = require("agentdiff.core.store")
+local util = require("agentdiff.core.util")
 
 local global_group = vim.api.nvim_create_augroup("agentdiff_global", { clear = true })
 

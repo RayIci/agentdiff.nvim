@@ -9,11 +9,11 @@ local M = {}
 
 local buffers = require("agentdiff.buffers")
 local claims = require("agentdiff.claims")
-local merge = require("agentdiff.merge")
+local merge = require("agentdiff.core.merge")
 local render = require("agentdiff.render")
 local review = require("agentdiff.review")
-local session = require("agentdiff.session")
-local util = require("agentdiff.util")
+local session = require("agentdiff.core.session")
+local util = require("agentdiff.core.util")
 
 ---@class AgentdiffActionOpts
 ---@field scope? "hunk"|"file"|"all"

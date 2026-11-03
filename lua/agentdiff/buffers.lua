@@ -4,10 +4,10 @@
 local M = {}
 
 local claims = require("agentdiff.claims")
-local merge = require("agentdiff.merge")
+local merge = require("agentdiff.core.merge")
 local review = require("agentdiff.review")
-local session = require("agentdiff.session")
-local util = require("agentdiff.util")
+local session = require("agentdiff.core.session")
+local util = require("agentdiff.core.util")
 
 ---@param ev table
 ---@return string? rel

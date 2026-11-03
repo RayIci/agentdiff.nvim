@@ -7,7 +7,7 @@
 local M = {}
 
 local review = require("agentdiff.review")
-local session = require("agentdiff.session")
+local session = require("agentdiff.core.session")
 
 ---@type { buf: integer?, win: integer?, paths: table<integer, string>, au: integer? }
 local state = { buf = nil, win = nil, paths = {}, au = nil }

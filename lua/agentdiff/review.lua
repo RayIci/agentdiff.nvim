@@ -12,9 +12,9 @@
 ---@class AgentdiffReview
 local M = {}
 
-local merge = require("agentdiff.merge")
-local session = require("agentdiff.session")
-local util = require("agentdiff.util")
+local merge = require("agentdiff.core.merge")
+local session = require("agentdiff.core.session")
+local util = require("agentdiff.core.util")
 
 ---@param s AgentdiffSession
 ---@param ... string?

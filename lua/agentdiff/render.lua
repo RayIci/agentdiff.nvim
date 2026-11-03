@@ -4,7 +4,7 @@
 ---@class AgentdiffRender
 local M = {}
 
-local session = require("agentdiff.session")
+local session = require("agentdiff.core.session")
 
 M.ns = vim.api.nvim_create_namespace("agentdiff")
 M.ns_hint = vim.api.nvim_create_namespace("agentdiff_hint")
