@@ -14,6 +14,25 @@ local state = { buf = nil, win = nil, paths = {}, au = nil }
 
 local letters = { modified = "M", created = "A", deleted = "D", binary = "B", conflicted = "C" }
 
+---What the panel's keys and summary call; injected by the entry point so the
+---panel never reaches up into actions or the public API.
+---@class AgentdiffPanelHandlers
+---@field status fun(): string
+---@field open fun(path: string)
+---@field keep fun(opts: table)
+---@field undo fun(opts: table)
+---@field keep_all fun()
+---@field undo_all fun()
+---@field refresh fun()
+
+---@type AgentdiffPanelHandlers
+local handlers
+
+---@param h AgentdiffPanelHandlers
+function M.set_handlers(h)
+  handlers = h
+end
+
 ---@return boolean
 function M.is_open()
   return state.win ~= nil and vim.api.nvim_win_is_valid(state.win)
@@ -25,7 +44,7 @@ end
 ---@return table<integer, string> paths  line number → path
 function M.lines(s)
   local lines, paths = {}, {}
-  local status = require("agentdiff").status()
+  local status = handlers.status()
   lines[1] = "agentdiff  " .. (status ~= "" and status or "nothing pending")
   lines[2] = ""
   for _, p in ipairs(s.order) do
@@ -94,36 +113,35 @@ function M.open()
   }) do
     vim.wo[state.win][k] = v
   end
-  local agentdiff = require("agentdiff")
   local function map(lhs, fn, desc)
     vim.keymap.set("n", lhs, fn, { buffer = state.buf, nowait = true, desc = desc })
   end
   map("<CR>", function()
-    on_file(agentdiff.open)
+    on_file(handlers.open)
   end, "Open file")
   map("o", function()
-    on_file(agentdiff.open)
+    on_file(handlers.open)
   end, "Open file")
   map("K", function()
     local p = path_at_cursor()
     if p then
-      agentdiff.keep({ scope = "file", path = p })
+      handlers.keep({ scope = "file", path = p })
     end
   end, "Keep file")
   map("U", function()
     local p = path_at_cursor()
     if p then
-      agentdiff.undo({ scope = "file", path = p })
+      handlers.undo({ scope = "file", path = p })
     end
   end, "Undo file")
   map("gK", function()
-    agentdiff.keep_all()
+    handlers.keep_all()
   end, "Keep all")
   map("gU", function()
-    agentdiff.undo_all()
+    handlers.undo_all()
   end, "Undo all")
   map("R", function()
-    require("agentdiff.detect").now("poll")
+    handlers.refresh()
   end, "Refresh")
   map("q", M.close, "Close")
   state.au = vim.api.nvim_create_autocmd("User", {

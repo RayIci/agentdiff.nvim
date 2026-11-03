@@ -254,6 +254,17 @@ function M.all(s)
   M.hint(s)
 end
 
+---Keep the hint next to the cursor (the UI owns its own autocmds).
+---@param s AgentdiffSession
+function M.attach(s)
+  vim.api.nvim_create_autocmd({ "CursorMoved", "BufWinEnter", "WinEnter" }, {
+    group = s.group,
+    callback = function()
+      M.hint(s)
+    end,
+  })
+end
+
 -- Redraw whenever the review state is refreshed.
 require("agentdiff.core.events").on("refreshed", function(s)
   M.all(s)

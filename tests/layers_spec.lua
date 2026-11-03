@@ -60,8 +60,6 @@ end
 -- Upward dependencies that still exist; each refactor step removes some.
 local allowed = {
   -- ALLOW-LIST (emptied by the end of the refactor)
-  ["buffers -> render"] = true,
-  ["panel -> init"] = true,
 }
 
 describe("layers", function()

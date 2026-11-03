@@ -347,13 +347,6 @@ function M.attach(s)
     end,
   })
 
-  vim.api.nvim_create_autocmd({ "CursorMoved", "BufWinEnter", "WinEnter" }, {
-    group = g,
-    callback = function()
-      require("agentdiff.render").hint(s)
-    end,
-  })
-
   -- Buffers loaded before the session started.
   for _, b in ipairs(vim.api.nvim_list_bufs()) do
     if vim.api.nvim_buf_is_loaded(b) then

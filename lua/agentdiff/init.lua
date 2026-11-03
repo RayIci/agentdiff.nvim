@@ -88,6 +88,7 @@ function M.start()
   end
   local s = session.new(root, store, opts)
   buffers.attach(s)
+  render.attach(s)
   detect.start(s)
   if s.ready then
     store:drop_unreviewable()
@@ -513,6 +514,30 @@ local function create_keymaps(keys)
     end, { desc = "Undo selected lines" })
   end
 end
+
+require("agentdiff.panel").set_handlers({
+  status = function()
+    return M.status()
+  end,
+  open = function(p)
+    M.open(p)
+  end,
+  keep = function(o)
+    M.keep(o)
+  end,
+  undo = function(o)
+    M.undo(o)
+  end,
+  keep_all = function()
+    M.keep_all()
+  end,
+  undo_all = function()
+    M.undo_all()
+  end,
+  refresh = function()
+    detect.now("poll")
+  end,
+})
 
 -- Setup -----------------------------------------------------------------------
 
