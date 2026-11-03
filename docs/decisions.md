@@ -14,6 +14,8 @@ Why agentdiff is built the way it is, and how it compares with VS Code.
 | Changed-files list | chat panel | panel + statusline + file-tree marks |
 | Agent configuration needed | — | none |
 | Pending changes survive a restart | ✓ | ✓ (persisted store) |
+| Staging a change in git keeps it | ✓ | ✓ (`keep_on_stage`, per hunk) |
+| Discarding a change in git discards it | ✓ | ✓ (discard detection) |
 | Non-agent writers (a build script) | not shown | shown unless ignored |
 
 The one place where "identical" becomes "nearly identical" is the last row:
@@ -91,6 +93,22 @@ Comparing against the project's *index* would hide an agent edit the agent
 staged itself, so git-guard compares against HEAD and fires on HEAD or stash
 movement. Discards don't move HEAD; they're recognised because they only move
 a file toward HEAD (`merge3(O, D, HEAD) == HEAD`).
+
+### Staging keeps
+
+The first version kept agent edits pending even when staged, so the agent
+couldn't hide its own work with `git add`. VS Code's documentation is explicit
+that staging keeps pending edits, so agentdiff now does the same, hunk by
+hunk, triggered by changes to the project's index. The cost of mimicking it:
+an agent that stages its own edits gets them kept, which `keep_on_stage =
+false` undoes.
+
+### Keep and undo end a conflict
+
+A conflict (an agent write overlapping your unsaved edits) used to stay until
+you saved, so its file-tree mark lingered after you'd kept the change. Keep
+and undo now resolve the conflict as a whole file and resync the buffer with
+the disk.
 
 ### Never close a window
 

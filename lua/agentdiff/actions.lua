@@ -299,9 +299,13 @@ local function act(kind, opts)
       return
     end
     for _, p in ipairs(vim.list_extend({}, s.order)) do
-      local f = review.compute(s, p)
-      if f then
-        fn(s, p, f, { scope = "file" })
+      if s.conflicts[p] then
+        M.resolve(kind == "keep" and "accept" or "mine", p)
+      else
+        local f = review.compute(s, p)
+        if f then
+          fn(s, p, f, { scope = "file" })
+        end
       end
     end
     review.refresh(s)
@@ -310,6 +314,11 @@ local function act(kind, opts)
   local rel, f = target(s, opts.path)
   if not rel or not f then
     return util.notify("agentdiff: no pending change here")
+  end
+  if s.conflicts[rel] then
+    -- a conflict is resolved as a whole file: keep = accept the agent's
+    -- version, undo = keep yours
+    return M.resolve(kind == "keep" and "accept" or "mine", rel)
   end
   if not fn(s, rel, f, opts) then
     return util.notify("agentdiff: no pending change under the cursor")
@@ -431,7 +440,7 @@ function M.open(rel)
 end
 
 ---Resolve a conflicted file.
----@param choice? "agent"|"mine"|"compare"
+---@param choice? "accept"|"agent"|"mine"|"compare"|string
 ---@param path? string
 function M.resolve(choice, path)
   local s = active()
@@ -444,7 +453,24 @@ function M.resolve(choice, path)
   end
   local function apply(c)
     local buf = session.buf_of_rel(s, rel)
-    if c == "agent" then
+    if c == "accept" then
+      -- Keep the agent's changes: its content wins where it overlaps your
+      -- unsaved edits; your other unsaved edits stay (unsaved) on top.
+      s.conflicts[rel] = nil
+      review.process(s, { rel }, "agent")
+      local D = util.read_file(session.abs(s, rel))
+      if buf and vim.api.nvim_buf_is_loaded(buf) then
+        local synced = s.synced[buf]
+        if synced == nil then
+          synced = s.store:read("baseline", { rel })[rel]
+        end
+        local merged =
+          merge.merge3(review.disp(buf, synced or nil), review.disp(buf, D), review.buf_lines(buf))
+        buffers.resync(buf, merged)
+        s.synced[buf] = D or false
+      end
+      review.set_baseline(s, rel, D)
+    elseif c == "agent" then
       s.conflicts[rel] = nil
       if buf then
         vim.api.nvim_buf_call(buf, function()
@@ -474,10 +500,11 @@ function M.resolve(choice, path)
   if choice then
     return apply(choice)
   end
-  vim.ui.select({ "agent", "mine", "compare" }, {
+  vim.ui.select({ "accept", "agent", "mine", "compare" }, {
     prompt = "agentdiff: " .. rel .. " conflicts with your unsaved edits",
     format_item = function(c)
       return ({
+        accept = "Keep the agent's changes, with your other unsaved edits on top",
         agent = "Take the agent's version (your unsaved edits can be restored with u)",
         mine = "Keep mine (undo the agent's changes to this file)",
         compare = "Compare side by side",

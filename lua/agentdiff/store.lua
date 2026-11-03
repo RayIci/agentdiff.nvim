@@ -443,19 +443,22 @@ function M.project_git(root, args, stdin)
   return vim.system(cmd, { clear_env = true, env = base_env(), stdin = stdin }):wait()
 end
 
----Committed (HEAD) content of project paths, read-only: path → text, or false
----when HEAD doesn't have it (or the project isn't a git repository).
+---Content of project paths at a revision of the project's own repository,
+---read-only: path → text, or false when it doesn't have the path (or the
+---project isn't a git repository). `prefix` is "HEAD:" for the committed
+---content or ":" for the staged (index) content.
 ---@param root string
 ---@param paths string[]
+---@param prefix string
 ---@return table<string, string|false>
-function M.head_contents(root, paths)
+local function project_contents(root, paths, prefix)
   local res = {}
   if #paths == 0 then
     return res
   end
   local input = {}
   for _, p in ipairs(paths) do
-    input[#input + 1] = "HEAD:" .. p
+    input[#input + 1] = prefix .. p
   end
   local out = M.project_git(root, { "cat-file", "--batch" }, table.concat(input, "\n") .. "\n").stdout or ""
   local pos = 1
@@ -472,6 +475,22 @@ function M.head_contents(root, paths)
     end
   end
   return res
+end
+
+---Committed (HEAD) content of project paths (see project_contents).
+---@param root string
+---@param paths string[]
+---@return table<string, string|false>
+function M.head_contents(root, paths)
+  return project_contents(root, paths, "HEAD:")
+end
+
+---Staged (index) content of project paths (see project_contents).
+---@param root string
+---@param paths string[]
+---@return table<string, string|false>
+function M.index_contents(root, paths)
+  return project_contents(root, paths, ":")
 end
 
 ---Delete the store directory (it's rebuilt from disk on the next start).

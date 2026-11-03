@@ -36,14 +36,14 @@ flowchart LR
 
 ## What's covered
 
-116 tests in 12 spec files.
+126 tests in 13 spec files.
 
 ```mermaid
 xychart-beta
     title "Tests per spec file"
-    x-axis [actions, merge, views, detect, store, fixes, render, session, buffers, attribution, smoke, api]
+    x-axis [actions, merge, views, detect, store, fixes, staging, render, session, buffers, attribution, smoke, api]
     y-axis "tests" 0 --> 20
-    bar [19, 17, 15, 14, 12, 11, 8, 6, 5, 5, 2, 2]
+    bar [19, 17, 15, 14, 12, 11, 10, 8, 6, 5, 5, 2, 2]
 ```
 
 ```mermaid
@@ -55,6 +55,7 @@ pie showData
     "Detection, claims, git-guard" : 14
     "Store" : 12
     "Fixes from first use" : 11
+    "Staging and conflicts" : 10
     "Overlay and hint" : 8
     "Startup and guards" : 6
     "Unsaved buffers" : 5
@@ -73,6 +74,7 @@ pie showData
 | `render_spec` | overlay geometry, untouched buffer text, highlights, hint position, hide/show |
 | `actions_spec` | navigation, keep and undo at every scope, undoing an undo, created/deleted/renamed files, partial ranges |
 | `views_spec` | panel, side-by-side, binary files, command, change event, status, `path_status` |
+| `staging_spec` | staging keeps (file, hunk, `commit -a`, created and deleted files, unstaging, the option), keep and undo ending a conflict |
 | `fixes_spec` | commit messages, ignored files, discards through git, windows never closed, the persisted toggle |
 | `api_spec` | every function and subcommand in the README exists, and the subcommand table matches the code |
 | `smoke_spec` | the plugin loads; per-test fixtures work |

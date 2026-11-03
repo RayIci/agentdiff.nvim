@@ -24,6 +24,31 @@ the agent's.
 
 No other plugins.
 
+## Installation
+
+With Neovim's built-in package manager (`:h vim.pack`):
+
+```lua
+vim.pack.add({ "https://github.com/RayIci/agentdiff.nvim" })
+require("agentdiff").setup({})
+```
+
+Update it with `:lua vim.pack.update()`.
+
+With [lazy.nvim](https://github.com/folke/lazy.nvim):
+
+```lua
+{
+  "RayIci/agentdiff.nvim",
+  lazy = false, -- it has to see every write from startup on
+  opts = {},
+}
+```
+
+Don't lazy-load it on a command or key: it tells your edits from the agent's
+by watching Neovim's own writes, so files you save before it loads would
+later show up as agent changes. Help is in `:help agentdiff`.
+
 ## Setup
 
 ```lua
@@ -51,6 +76,7 @@ require("agentdiff").setup({
 | `excludes` | build/cache dirs | gitignore-style patterns never reviewed, on top of `.gitignore` |
 | `root` | git toplevel or cwd | force the project root; the home directory and `/` are never used unless forced |
 | `confirm` | `true` | ask before keep-all / undo-all |
+| `keep_on_stage` | `true` | staging a pending change in git keeps it (like VS Code); commits keep what they stage |
 | `hint` | `true` | show the hint on the change nearest the cursor |
 | `auto_start` | `true` | start on setup (on `VimEnter`) |
 
@@ -71,7 +97,7 @@ Every action is a function on `require("agentdiff")`:
 | `undo(opts)` | restore the baseline of pending changes, on disk |
 | `keep_file()` / `undo_file()` | keep / undo every change in the current file |
 | `keep_all(opts)` / `undo_all(opts)` | every change in every file; asks first unless `{ force = true }` |
-| `resolve(choice)` | resolve a conflicted file: `"agent"`, `"mine"` or `"compare"` (asks when nil) |
+| `resolve(choice)` | resolve a conflicted file: `"accept"` (the agent's changes, your other unsaved edits on top), `"agent"`, `"mine"` or `"compare"` (asks when nil). Keep and undo on a conflicted file do `"accept"` and `"mine"` |
 | `panel()` | toggle the changed-files panel |
 | `toggle_view()` | toggle inline overlay ↔ side-by-side diff for the current file |
 | `toggle_overlay()` | hide / show the overlay; nothing is kept or undone |
@@ -154,8 +180,12 @@ changes are always *baseline → current content*.
   back to HEAD's content are folded into the baseline instead of flagged.
 - A change that only moves a file back toward its committed content (a
   discard: `git restore`, `git checkout -- f`, lazygit's file or hunk
-  discard) is yours too. An agent edit moves away from HEAD, so it is shown
-  even when the agent stages it.
+  discard) is yours too. An agent edit moves away from HEAD, so it stays
+  pending until you keep it.
+- **Staging keeps** (as in VS Code): when you stage a pending change, in
+  lazygit, `git add`, or `git commit -a`, it is kept, file or single hunk.
+  Unstaging never makes anything pending again. Turn it off with
+  `keep_on_stage = false`.
 - Files inside `.git` (commit messages, rebase todos) and ignored files are
   never reviewed, whoever writes them.
 

@@ -83,6 +83,7 @@ Where claims come from:
 | another Neovim on the same project | its `BufWritePre` claim lands in the shared `claims/` directory |
 | git checkout / pull / reset / stash / commit | git-guard: HEAD moved and the content equals HEAD |
 | lazygit discard, `git restore`, `git checkout -- f` | discard detection: the change only moves the file toward HEAD |
+| lazygit stage, `git add`, `git commit -a` | not an attribution: staging **keeps** the staged pending changes (below) |
 
 A claim is consumed when the change it covers is processed (and expires
 after `claim_ttl` if nothing used it), so an agent edit right after your save
@@ -183,6 +184,8 @@ later `:w` doesn't hit "the file has been changed since reading it".
 ```mermaid
 stateDiagram-v2
     [*] --> Conflicted: agent write overlaps unsaved edits
+    Conflicted --> Clean: keep (= resolve "accept")<br/>agent wins overlaps, your other edits stay
+    Conflicted --> Mine: undo (= resolve "mine")
     Conflicted --> Agent: resolve "agent"
     Conflicted --> Mine: resolve "mine"
     Conflicted --> Compare: resolve "compare"
@@ -243,13 +246,36 @@ flowchart LR
 | You do | HEAD moves? | Detected by |
 |---|:---:|---|
 | `git switch`, `pull`, `reset --hard`, `stash` | yes | git-guard |
-| `git commit` (worktree unchanged) | yes | nothing changes on disk, pending stays pending |
+| `git commit` of files without pending changes | yes | nothing changes on disk, pending stays pending |
+| stage a pending change, `git commit -a` | (index) | staging keeps it (`keep_on_stage`) |
 | lazygit "discard" of a file, `git restore f`, `git checkout -- f` | no | discard detection |
 | lazygit "discard" of one hunk (`git apply -R`) | no | discard detection (partial moves count) |
 | agent edits and `git add`s | no | moves away from HEAD → shown as the agent's |
 
 Limitation: discarding unstaged changes while *other* changes to the same
 file are staged moves the file toward the index, not HEAD, and is shown.
+
+### Staging keeps (like VS Code)
+
+VS Code keeps a pending edit as soon as you stage it. agentdiff does the same:
+whenever the project's `.git/index` changes, each pending file's staged
+content is read (read-only) and every pending hunk that is fully staged moves
+into the baseline.
+
+```mermaid
+flowchart LR
+    idx(["the project's .git/index changed"]) --> each["for each pending file:<br/>I = staged content, D = disk"]
+    each --> h{"for each pending hunk B→D:<br/>does any hunk of diff(I, D)<br/>touch its region?"}
+    h -- "no: it's staged" --> keep["keep it: B takes D's lines"]
+    h -- "yes: not (fully) staged" --> stay["stays pending"]
+```
+
+- Staging a single hunk in lazygit keeps just that hunk; `git commit -a`
+  stages everything, so it keeps everything it commits.
+- It only ever keeps: unstaging, or staging your own saved work, never makes
+  anything pending.
+- agentdiff can't tell who ran `git add`: if the agent stages its own edits,
+  they're kept too. `keep_on_stage = false` turns staging-keeps off.
 
 ## What is never reviewed
 

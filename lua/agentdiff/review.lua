@@ -296,6 +296,63 @@ function M.process(s, paths, author)
   end
 end
 
+---Keep the pending changes that are staged in the project's index (VS Code:
+---staging keeps pending edits). A pending hunk B→disk is staged when no hunk
+---of diff(index, disk) overlaps or touches its region of the disk content;
+---staged hunks are applied to B. Unstaged parts stay pending; nothing is ever
+---made pending again by this (unstaging is not an undo).
+---@param s AgentdiffSession
+---@param paths string[]           pending project-relative paths
+---@param staged table<string, string|false>  index content per path
+---@param head table<string, string|false>    HEAD content per path (for staged deletions)
+---@return boolean changed
+function M.keep_staged(s, paths, staged, head)
+  local changed = false
+  local B = s.store:read("baseline", paths)
+  for _, p in ipairs(paths) do
+    local b = opt(B[p])
+    local I = opt(staged[p])
+    local D = util.read_file(session.abs(s, p))
+    local nb = b
+    if D == nil then
+      -- a deletion is staged when the index no longer has a file HEAD had
+      if I == nil and head[p] then
+        nb = nil
+      end
+    elseif I ~= nil then
+      if M.is_whole(s, b, D, I) then
+        if I == D then
+          nb = D
+        end
+      else
+        local bl, dl = merge.lines(b), merge.lines(D)
+        local unstaged = merge.diff(merge.lines(I), dl)
+        local hunks = merge.diff(bl, dl)
+        local base = bl
+        for i = #hunks, 1, -1 do
+          local h = hunks[i]
+          local touched = false
+          for _, g in ipairs(unstaged) do
+            if g.b_lo <= h.b_hi and h.b_lo <= g.b_hi then
+              touched = true
+              break
+            end
+          end
+          if not touched then
+            base = merge.splice(base, h.a_lo, h.a_hi, merge.slice(dl, h.b_lo, h.b_hi))
+          end
+        end
+        nb = (b == nil and #base == 0) and nil or merge.join(base)
+      end
+    end
+    if nb ~= b then
+      M.set_baseline(s, p, nb)
+      changed = true
+    end
+  end
+  return changed
+end
+
 ---Set B for one path (keep), from display-space lines of the given buffer.
 ---@param s AgentdiffSession
 ---@param path string

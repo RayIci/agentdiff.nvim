@@ -207,7 +207,8 @@ function M.undo_all(opts)
   actions.undo({ scope = "all", force = opts and opts.force })
 end
 
----Resolve a conflicted file: "agent", "mine" or "compare" (asks when nil).
+---Resolve a conflicted file: "accept" (the agent's changes, your other unsaved
+---edits on top), "agent", "mine" or "compare" (asks when nil).
 M.resolve = actions.resolve
 
 -- Views -----------------------------------------------------------------------

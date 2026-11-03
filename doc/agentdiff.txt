@@ -97,6 +97,11 @@ never used as a project unless you set `root`.
 `confirm`        (boolean, default `true`)
                  ask before keep-all / undo-all.
 
+`keep_on_stage`  (boolean, default `true`)
+                 staging a pending change in git (lazygit, `git add`,
+                 `git commit -a`) keeps it, like VS Code. Unstaging never
+                 makes anything pending again.
+
 `hint`           (boolean, default `true`)
                  show the hint on the change nearest the cursor.
 
@@ -138,10 +143,13 @@ Editing~
 Conflicts~
     When an agent writes a file whose buffer has unsaved edits of yours,
     non-overlapping changes are merged into the buffer (no prompt). When they
-    overlap, the buffer is left alone and the file is marked conflicted;
-    resolve it with `:Agentdiff resolve`: take the agent's version (your
-    edits are recoverable with |u|), keep yours (the agent's changes to the
-    file are undone on disk), or compare side by side.
+    overlap, the buffer is left alone and the file is marked conflicted.
+    Keep accepts the agent's changes (the agent wins where it overlaps your
+    unsaved edits, your other unsaved edits stay); undo rejects them (the
+    disk goes back to the baseline, your unsaved edits stay). Either way the
+    conflict ends and the buffer is in sync with the disk again.
+    `:Agentdiff resolve` offers the same plus: take the agent's version
+    outright (your edits are recoverable with |u|), or compare side by side.
 
 Views~
     `:Agentdiff view` switches the current file between the inline overlay
@@ -210,7 +218,8 @@ keep_file() / undo_file() / keep_all({opts}) / undo_all({opts})
     Shorthands for the scopes above.
 
 resolve({choice})                                    *agentdiff.resolve()*
-    Resolve a conflicted file: "agent", "mine" or "compare"; asks when nil.
+    Resolve a conflicted file: "accept" (the agent's changes with your other
+    unsaved edits on top), "agent", "mine" or "compare"; asks when nil.
 
 panel() / toggle_view() / toggle_overlay()
     Views, see |agentdiff-panel| and |agentdiff-reviewing|.
@@ -333,7 +342,9 @@ are always baseline → current content.
   back to HEAD's content are folded into the baseline.
 - Discards (`git restore`, `git checkout -- f`, lazygit's file or hunk
   discard) only move a file toward its committed content: they are yours. An
-  agent edit moves away from HEAD, so it is shown even when it is staged.
+  agent edit moves away from HEAD, so it stays pending.
+- Staging keeps: staging a pending change (file or hunk) keeps it, as in VS
+  Code, so a commit keeps what it stages. See `keep_on_stage`.
 
 A newly seen, unclaimed change waits `settle` ms before it is confirmed as the
 agent's, so claims from other instances can arrive first.

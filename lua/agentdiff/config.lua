@@ -31,6 +31,7 @@ local M = {}
 ---@field state_dir? string               where per-project stores live (default: stdpath("state")/agentdiff)
 ---@field root? string                    force the project root (default: git toplevel or cwd)
 ---@field confirm boolean                 ask before keep-all / undo-all
+---@field keep_on_stage boolean           staging a pending change in git keeps it (like VS Code)
 ---@field hint boolean                    show the hint on the change nearest the cursor
 ---@field auto_start boolean              start reviewing on setup (tests turn this off)
 
@@ -66,6 +67,7 @@ M.defaults = {
   state_dir = nil,
   root = nil,
   confirm = true,
+  keep_on_stage = true,
   hint = true,
   auto_start = true,
 }
@@ -112,6 +114,7 @@ function M.resolve(opts)
   vim.validate("state_dir", o.state_dir, "string", true)
   vim.validate("root", o.root, "string", true)
   vim.validate("confirm", o.confirm, "boolean")
+  vim.validate("keep_on_stage", o.keep_on_stage, "boolean")
   vim.validate("hint", o.hint, "boolean")
   vim.validate("auto_start", o.auto_start, "boolean")
   if type(o.keymaps) == "table" then

@@ -57,6 +57,39 @@ local function guard_signature(s)
   return table.concat(parts, "|")
 end
 
+---Fingerprint of the project's own index (`.git/index`), for staging.
+---@param s AgentdiffSession
+---@return string
+local function index_signature(s)
+  local gd = project_gitdir(s)
+  local st = gd and uv.fs_stat(gd .. "/index")
+  return st and (st.mtime.sec .. "." .. st.mtime.nsec .. ":" .. st.size) or ""
+end
+
+---@type string?
+local index_sig = nil
+
+---Keep pending changes that were just staged in the project's index.
+---@param s AgentdiffSession
+---@return boolean changed
+local function keep_staged(s)
+  local paths = {}
+  for _, p in ipairs(s.order) do
+    if not s.conflicts[p] then
+      paths[#paths + 1] = p
+    end
+  end
+  if #paths == 0 then
+    return false
+  end
+  return review.keep_staged(
+    s,
+    paths,
+    store_mod.index_contents(s.root, paths),
+    store_mod.head_contents(s.root, paths)
+  )
+end
+
 ---@param out string?
 ---@return table<string, boolean>
 local function set0(out)
@@ -145,6 +178,9 @@ local function handle(s, changes, mode)
   local sig = guard_signature(s)
   local guard_moved = guard_sig ~= nil and sig ~= guard_sig
   guard_sig = sig
+  local isig = index_signature(s)
+  local index_moved = index_sig ~= nil and isig ~= index_sig
+  index_sig = isig
 
   local users, agents, candidates = {}, {}, {}
   local seen = {}
@@ -200,6 +236,11 @@ local function handle(s, changes, mode)
   if #users > 0 or #agents > 0 then
     local all = vim.list_extend(vim.list_extend({}, users), agents)
     sync_buffers(s, all)
+    review.refresh(s)
+  end
+  -- Staging keeps (after this poll's changes are attributed, so an agent edit
+  -- staged in the same instant is kept too).
+  if index_moved and s.opts.keep_on_stage and keep_staged(s) then
     review.refresh(s)
   end
   return need_confirm
@@ -290,6 +331,7 @@ end
 ---@param s AgentdiffSession
 function M.start(s)
   guard_sig = guard_signature(s)
+  index_sig = index_signature(s)
   local g = s.group
   vim.api.nvim_create_autocmd("FocusLost", {
     group = g,
@@ -353,6 +395,7 @@ function M.stop()
   suspects = {}
   running = false
   guard_sig = nil
+  index_sig = nil
   focused = true
 end
 
