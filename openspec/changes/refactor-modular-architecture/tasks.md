@@ -31,7 +31,7 @@ Each group ends with `make test`, `make fmt-check` and lua_ls clean, and is comm
 ## 6. Thin entry point and extension points
 
 - [x] 6.1 Extract `command.lua` and `keymaps.lua`; reduce `init.lua` to setup/start/stop orchestration and re-exports; verify the public-surface test passes unchanged
-- [ ] 6.2 Add `harness/init.lua` with the adapter interface and an empty registry (D5); verify a test registers a fake adapter and gets it back
+- [x] 6.2 Add `harness/init.lua` with the adapter interface and an empty registry (D5); verify a test registers a fake adapter and gets it back
 
 ## 7. Integrations
 
