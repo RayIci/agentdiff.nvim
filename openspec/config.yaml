@@ -1,0 +1,50 @@
+schema: spec-driven
+
+context: |
+  agentdiff.nvim: a Neovim plugin (Lua, Neovim >= 0.12) that reviews file changes
+  made by AI agents (Claude Code, Copilot CLI, Codex) running outside Neovim, the way
+  VS Code's agent mode does: inline diff, keep/undo per change, file or all.
+  Dependencies: Neovim and the `git` executable only; no other plugins. The plugin
+  registers no keymaps unless the host passes them; integrations with other plugins
+  (neo-tree, oil, grug-far, lualine) are host-side recipes built on the public API.
+  Behaviour contract: openspec/specs/agent-change-review/spec.md.
+  Code: lua/agentdiff/; user docs in README.md and doc/agentdiff.txt (:help agentdiff);
+  design docs with Mermaid diagrams in docs/. Keep all three in step with behaviour.
+  Tests: headless, no framework: `make test` (nvim --headless -u NONE -l tests/run.lua).
+  Every spec scenario gets a test named after it. Also `make fmt-check` (stylua) and
+  lua-language-server must report no problems (modules carry LuaCATS annotations).
+  The user's Neovim config (~/.config/nvim) installs this plugin via vim.pack and owns
+  the host wiring and its specs there.
+githubCopilot:
+  cloudAgent: false
+
+# Project context (optional)
+# Add only constraints that should guide OpenSpec artifacts and workflows.
+# Include constraints an agent cannot infer by reading the code.
+# Keep general project documentation and discoverable codebase facts out.
+# Example:
+#   context: |
+#     Designs and tasks must cover Windows, macOS, and Linux
+#     Write all artifacts in Spanish
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always state what is out of scope
+#     tasks:
+#       - Break tasks into chunks of max 2 hours
+
+# Per-operation guidance (optional)
+# Add advisory guidance for how apply and archive work should be conducted.
+# This is separate from artifact rules above.
+# Example:
+#   operations:
+#     apply:
+#       guidance:
+#         - Keep test summaries concise
+#     archive:
+#       guidance:
+#         - Summarize the archive outcome before finishing
