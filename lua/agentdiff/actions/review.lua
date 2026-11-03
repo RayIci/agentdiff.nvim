@@ -13,7 +13,7 @@ local buffers = require("agentdiff.editor.buffers")
 local claims = require("agentdiff.core.claims")
 local common = require("agentdiff.actions.common")
 local merge = require("agentdiff.core.merge")
-local render = require("agentdiff.render")
+local positions = require("agentdiff.core.positions")
 local resolve = require("agentdiff.actions.resolve")
 local session = require("agentdiff.core.session")
 local state = require("agentdiff.core.state")
@@ -42,7 +42,7 @@ local function select_hunks(f, range)
     return sel
   end
   if not range then
-    local i = render.hunk_at(f, common.cursor_row(), true)
+    local i = positions.hunk_at(f, common.cursor_row(), true)
     if i then
       local h = f.hunks[i]
       sel[1] = { h = h, del = true, lo = h.b_lo, hi = h.b_hi }
@@ -58,7 +58,7 @@ local function select_hunks(f, range)
     local lo, hi = math.max(h.b_lo, r1), math.min(h.b_hi, r2)
     -- Removed lines are drawn above the anchor row: selected when the range
     -- covers that row and starts at or above it.
-    local anchor = render.anchor_row(h, nlines)
+    local anchor = positions.anchor_row(h, nlines)
     local del = h.a_hi > h.a_lo and r1 <= anchor and anchor < r2
     if hi > lo or del then
       sel[#sel + 1] = { h = h, del = del, lo = math.max(lo, h.b_lo), hi = math.max(hi, math.max(lo, h.b_lo)) }
@@ -242,7 +242,7 @@ local function confirm_all(s, what, opts)
   if opts.force or not s.opts.confirm then
     return true
   end
-  local n = render.count(s)
+  local n = positions.count(s)
   return vim.fn.confirm(("%s all %d pending changes in %d files?"):format(what, n, #s.order), "&Yes\n&No", 2)
     == 1
 end

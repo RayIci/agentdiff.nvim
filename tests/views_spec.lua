@@ -92,7 +92,11 @@ describe("side-by-side", function()
     eq({ "a", "old", "c" }, vim.api.nvim_buf_get_lines(base_buf, 0, -1, false))
     eq(false, vim.bo[base_buf].modifiable)
     ok(vim.wo[base_win].diff and vim.wo[file_win].diff, "both windows in diff mode")
-    eq(0, #vim.api.nvim_buf_get_extmarks(buf, require("agentdiff.render").ns, 0, -1, {}), "overlay hidden")
+    eq(
+      0,
+      #vim.api.nvim_buf_get_extmarks(buf, require("agentdiff.ui.overlay").ns, 0, -1, {}),
+      "overlay hidden"
+    )
     -- keep works in this view, from the file window
     vim.api.nvim_win_set_cursor(file_win, { 2, 0 })
     agentdiff.keep()
@@ -121,7 +125,7 @@ describe("binary and oversized files", function()
     local agentdiff = scene({ ["logo.png"] = "\137PNG\0\1\2" }, { ["logo.png"] = "\137PNG\0\9\9\9" })
     eq({ "binary logo.png +0 -0 #0" }, H.pending())
     local buf = H.edit("logo.png")
-    eq(0, #vim.api.nvim_buf_get_extmarks(buf, require("agentdiff.render").ns, 0, -1, {}))
+    eq(0, #vim.api.nvim_buf_get_extmarks(buf, require("agentdiff.ui.overlay").ns, 0, -1, {}))
     agentdiff.undo({ scope = "hunk" })
     eq("\137PNG\0\1\2", H.read("logo.png"), "undone as a whole file")
     H.poll()
@@ -239,7 +243,7 @@ describe("path status", function()
   end)
 
   it("defines the tree highlight groups", function()
-    require("agentdiff.render").define_highlights()
+    require("agentdiff.ui.highlights").define()
     eq("DiagnosticWarn", vim.api.nvim_get_hl(0, { name = "AgentdiffTreeFile" }).link)
     eq("DiagnosticWarn", vim.api.nvim_get_hl(0, { name = "AgentdiffTreeDir" }).link)
   end)

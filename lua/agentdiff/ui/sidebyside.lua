@@ -4,7 +4,7 @@
 ---@class AgentdiffSideBySide
 local M = {}
 
-local render = require("agentdiff.render")
+local overlay = require("agentdiff.ui.overlay")
 local state = require("agentdiff.core.state")
 local txt = require("agentdiff.core.text")
 local session = require("agentdiff.core.session")
@@ -76,7 +76,7 @@ function M.toggle()
       pcall(vim.cmd.diffupdate)
     end,
   })
-  render.all(s)
+  overlay.all(s)
 end
 
 ---@param s AgentdiffSession
@@ -94,7 +94,7 @@ function M.close(s, buf)
       end)
     end
   end
-  render.all(s)
+  overlay.all(s)
 end
 
 ---Show the file on disk next to a buffer with unsaved edits (conflicts).

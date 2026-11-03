@@ -1,7 +1,13 @@
 local H = require("helpers")
 
 local function marks(buf, ns)
-  return vim.api.nvim_buf_get_extmarks(buf, ns or require("agentdiff.render").ns, 0, -1, { details = true })
+  return vim.api.nvim_buf_get_extmarks(
+    buf,
+    ns or require("agentdiff.ui.overlay").ns,
+    0,
+    -1,
+    { details = true }
+  )
 end
 
 ---@return { row: integer, added: boolean, virt: string[]?, above: boolean? }[]
@@ -60,7 +66,7 @@ describe("overlay", function()
   end)
 
   it("uses highlight groups that link to DiffAdd and DiffDelete by default", function()
-    require("agentdiff.render").define_highlights()
+    require("agentdiff.ui.highlights").define()
     eq("DiffAdd", vim.api.nvim_get_hl(0, { name = "AgentdiffAdd" }).link)
     eq("DiffDelete", vim.api.nvim_get_hl(0, { name = "AgentdiffDelete" }).link)
   end)
@@ -75,7 +81,7 @@ end)
 
 describe("hint", function()
   local function hint_text(buf)
-    local m = marks(buf, require("agentdiff.render").ns_hint)
+    local m = marks(buf, require("agentdiff.ui.hint").ns)
     return m[1] and m[1][4].virt_text[1][1] or nil
   end
 
@@ -89,7 +95,7 @@ describe("hint", function()
     agentdiff._test.flush()
     -- 3 changes in a.lua + 1 in z.lua = 4 (z.lua: one hunk)
     vim.api.nvim_win_set_cursor(0, { 15, 0 })
-    require("agentdiff.render").hint(agentdiff._test.session())
+    require("agentdiff.ui.hint").draw(agentdiff._test.session())
     eq("agent 2/4 · <leader>rk keep · <leader>ru undo", hint_text(buf))
   end)
 
@@ -100,7 +106,7 @@ describe("hint", function()
     vim.api.nvim_win_set_cursor(0, { 28, 0 })
     vim.api.nvim_exec_autocmds("CursorMoved", {})
     eq("agent 2/2 · <leader>rk keep · <leader>ru undo", hint_text(buf))
-    local m = marks(buf, require("agentdiff.render").ns_hint)
+    local m = marks(buf, require("agentdiff.ui.hint").ns)
     eq(29, m[1][2], "placed on the change's line")
     local _ = agentdiff
   end)

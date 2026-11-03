@@ -20,9 +20,6 @@ local levels = {
   { 5, "^keymaps$" },
   { 6, "^integrations%." },
   -- flat modules not moved yet, at the level they are moving to
-  { 3, "^render$" },
-  { 3, "^panel$" },
-  { 3, "^sidebyside$" },
 }
 
 ---Level of a module name relative to agentdiff ("core.merge", "init", …).

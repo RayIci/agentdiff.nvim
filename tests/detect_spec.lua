@@ -44,7 +44,7 @@ describe("detection", function()
       H.poll()
       eq({ "modified never.lua +1 -1 #1" }, H.pending())
       local buf = H.edit("never.lua")
-      local ns = require("agentdiff.render").ns
+      local ns = require("agentdiff.ui.overlay").ns
       ok(
         vim.wait(1000, function()
           return #vim.api.nvim_buf_get_extmarks(buf, ns, 0, -1, {}) >= 2

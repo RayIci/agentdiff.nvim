@@ -3,7 +3,8 @@
 local M = {}
 
 local common = require("agentdiff.actions.common")
-local render = require("agentdiff.render")
+local hint = require("agentdiff.ui.hint")
+local positions = require("agentdiff.core.positions")
 local session = require("agentdiff.core.session")
 local state = require("agentdiff.core.state")
 local util = require("agentdiff.core.util")
@@ -18,7 +19,7 @@ local function jump(s, rel, row)
   end
   local count = vim.api.nvim_buf_line_count(0)
   vim.api.nvim_win_set_cursor(0, { math.max(1, math.min(row + 1, count)), 0 })
-  render.hint(s)
+  hint.draw(s)
 end
 
 ---@param dir 1|-1
@@ -29,7 +30,7 @@ local function move(dir, by_file)
     return
   end
   state.refresh(s)
-  local entries = render.flatten(s)
+  local entries = positions.flatten(s)
   if #entries == 0 then
     return util.notify("agentdiff: nothing pending")
   end

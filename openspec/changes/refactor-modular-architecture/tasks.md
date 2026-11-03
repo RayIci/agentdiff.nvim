@@ -26,7 +26,7 @@ Each group ends with `make test`, `make fmt-check` and lua_ls clean, and is comm
 
 ## 5. ui/
 
-- [ ] 5.1 Split `render.lua` into `ui/overlay.lua`, `ui/hint.lua`, `ui/highlights.lua`; move `panel` and `sidebyside` into `ui/`; add `ui/status.lua` (`status`, `path_status`, `files`); verify the suite passes
+- [x] 5.1 Split `render.lua` into `ui/overlay.lua`, `ui/hint.lua`, `ui/highlights.lua`; move `panel` and `sidebyside` into `ui/`; add `ui/status.lua` (`status`, `path_status`, `files`); verify the suite passes
 
 ## 6. Thin entry point and extension points
 

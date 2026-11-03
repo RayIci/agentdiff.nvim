@@ -16,10 +16,13 @@ local claims = require("agentdiff.core.claims")
 local config = require("agentdiff.config")
 local detect = require("agentdiff.detect.poller")
 local git = require("agentdiff.detect.git")
-local render = require("agentdiff.render")
+local highlights = require("agentdiff.ui.highlights")
+local hint = require("agentdiff.ui.hint")
+local overlay = require("agentdiff.ui.overlay")
 local state = require("agentdiff.core.state")
 local session = require("agentdiff.core.session")
 local store_mod = require("agentdiff.core.store")
+local status = require("agentdiff.ui.status")
 local util = require("agentdiff.core.util")
 
 local global_group = vim.api.nvim_create_augroup("agentdiff_global", { clear = true })
@@ -60,7 +63,7 @@ function M.start()
   store = onoff.fresh_store(store, root, opts, epoch)
   local s = session.new(root, store, opts)
   buffers.attach(s)
-  render.attach(s)
+  hint.attach(s)
   detect.start(s)
   if s.ready then
     store:drop_unreviewable()
@@ -114,11 +117,11 @@ function M.stop()
     pcall(vim.api.nvim_del_augroup_by_id, s.group)
     for _, b in ipairs(vim.api.nvim_list_bufs()) do
       if vim.api.nvim_buf_is_loaded(b) then
-        vim.api.nvim_buf_clear_namespace(b, render.ns, 0, -1)
-        vim.api.nvim_buf_clear_namespace(b, render.ns_hint, 0, -1)
+        vim.api.nvim_buf_clear_namespace(b, overlay.ns, 0, -1)
+        vim.api.nvim_buf_clear_namespace(b, hint.ns, 0, -1)
       end
     end
-    require("agentdiff.panel").close()
+    require("agentdiff.ui.panel").close()
   end
   session.current = nil
 end
@@ -188,11 +191,11 @@ M.resolve = resolve_mod.resolve
 -- Views -----------------------------------------------------------------------
 
 function M.panel()
-  require("agentdiff.panel").toggle()
+  require("agentdiff.ui.panel").toggle()
 end
 
 function M.toggle_view()
-  require("agentdiff.sidebyside").toggle()
+  require("agentdiff.ui.sidebyside").toggle()
 end
 
 function M.toggle_overlay()
@@ -201,7 +204,7 @@ function M.toggle_overlay()
     return
   end
   s.overlay_hidden = not s.overlay_hidden
-  render.all(s)
+  overlay.all(s)
 end
 
 -- Claims, status, events ------------------------------------------------------
@@ -238,70 +241,13 @@ function M.claim(paths)
 end
 
 ---Statusline summary: "3 files · 7 changes", or "" when nothing is pending.
----@return string
-function M.status()
-  local s = session.get()
-  if not s or #s.order == 0 then
-    return ""
-  end
-  local nf, nc = #s.order, render.count(s)
-  return ("%d %s · %d %s"):format(nf, nf == 1 and "file" or "files", nc, nc == 1 and "change" or "changes")
-end
+M.status = status.status
 
----@type { sig: string?, root: string?, files: table<string, true>, dirs: table<string, true> }
-local status_cache = { files = {}, dirs = {} }
-
----Review status of a path, for file trees: "file" when the file has pending
----changes (created and deleted files included), "dir" when a directory
----contains such a file at any depth, nil otherwise. Cheap: answered from sets
----rebuilt only when pending changes change.
----@param path string absolute, or relative to the project root
----@return "file"|"dir"|nil
-function M.path_status(path)
-  local s = session.get()
-  if not s or #s.order == 0 then
-    return nil
-  end
-  if status_cache.sig ~= s.signature or status_cache.root ~= s.root then
-    local files, dirs = {}, {}
-    for _, p in ipairs(s.order) do
-      files[p] = true
-      local d = vim.fs.dirname(p)
-      while d and d ~= "." and d ~= "" and not dirs[d] do
-        dirs[d] = true
-        d = vim.fs.dirname(d)
-      end
-    end
-    dirs[""] = true -- the project root contains them all
-    status_cache = { sig = s.signature, root = s.root, files = files, dirs = dirs }
-  end
-  local abs = path:sub(1, 1) == "/" and vim.fs.normalize(path) or session.abs(s, path)
-  abs = abs:gsub("/$", "")
-  local rel = abs == s.root and "" or util.relative(s.root, abs)
-  if not rel then
-    return nil
-  end
-  if status_cache.files[rel] then
-    return "file"
-  elseif status_cache.dirs[rel] then
-    return "dir"
-  end
-  return nil
-end
+---Review status of a path for file trees: "file", "dir" or nil.
+M.path_status = status.path_status
 
 ---Pending files in navigation order (read-only copies).
----@return AgentdiffFile[]
-function M.files()
-  local s = session.get()
-  if not s then
-    return {}
-  end
-  local out = {}
-  for _, p in ipairs(s.order) do
-    out[#out + 1] = vim.deepcopy(s.files[p])
-  end
-  return out
-end
+M.files = status.files
 
 -- Command ---------------------------------------------------------------------
 
@@ -466,7 +412,7 @@ local function create_keymaps(keys)
   end
 end
 
-require("agentdiff.panel").set_handlers({
+require("agentdiff.ui.panel").set_handlers({
   status = function()
     return M.status()
   end,
@@ -495,9 +441,9 @@ require("agentdiff.panel").set_handlers({
 ---@param opts AgentdiffOptions|table|nil
 function M.setup(opts)
   local o = config.resolve(opts)
-  render.define_highlights()
+  highlights.define()
   vim.api.nvim_clear_autocmds({ group = global_group })
-  vim.api.nvim_create_autocmd("ColorScheme", { group = global_group, callback = render.define_highlights })
+  vim.api.nvim_create_autocmd("ColorScheme", { group = global_group, callback = highlights.define })
   vim.api.nvim_create_autocmd("DirChanged", {
     group = global_group,
     pattern = "global",

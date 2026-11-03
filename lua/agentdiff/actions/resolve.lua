@@ -65,7 +65,7 @@ function M.resolve(choice, path)
         buffers.resync(buf, txt.buf_lines(buf))
       end
     elseif c == "compare" then
-      require("agentdiff.sidebyside").compare_disk(s, rel)
+      require("agentdiff.ui.sidebyside").compare_disk(s, rel)
       return
     end
     state.refresh(s, { rel })
