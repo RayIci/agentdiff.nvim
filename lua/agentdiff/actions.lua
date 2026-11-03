@@ -8,10 +8,12 @@
 local M = {}
 
 local buffers = require("agentdiff.buffers")
-local claims = require("agentdiff.claims")
+local claims = require("agentdiff.core.claims")
 local merge = require("agentdiff.core.merge")
 local render = require("agentdiff.render")
-local review = require("agentdiff.review")
+local baseline = require("agentdiff.core.baseline")
+local state = require("agentdiff.core.state")
+local txt = require("agentdiff.core.text")
 local session = require("agentdiff.core.session")
 local util = require("agentdiff.core.util")
 
@@ -42,7 +44,7 @@ local function target(s, path)
   if not rel then
     return nil, nil
   end
-  local f = review.compute(s, rel)
+  local f = state.compute(s, rel)
   s.files[rel] = f
   return rel, f
 end
@@ -145,15 +147,15 @@ local function write_base(s, f, new_base)
   local B = s.store:read("baseline", { f.path })[f.path] or nil
   local text
   if f.buf then
-    local bl = review.disp(f.buf, B)
-    text = review.undisp(f.buf, (merge.merge3(f.base, bl, new_base)))
+    local bl = txt.disp(f.buf, B)
+    text = txt.undisp(f.buf, (merge.merge3(f.base, bl, new_base)))
   else
     text = merge.join(new_base)
   end
   if B == nil and f.status == "created" and #new_base == 0 then
     text = nil
   end
-  review.set_baseline(s, f.path, text)
+  baseline.set_baseline(s, f.path, text)
 end
 
 ---@param s AgentdiffSession
@@ -183,7 +185,7 @@ local function restore_whole(s, rel)
   else
     util.write_file(session.abs(s, rel), B)
   end
-  review.process(s, { rel }, "user")
+  baseline.process(s, { rel }, "user")
   if buf and vim.api.nvim_buf_is_valid(buf) then
     pcall(vim.cmd.checktime, buf)
   end
@@ -197,7 +199,7 @@ end
 local function keep_one(s, rel, f, opts)
   if f.whole or f.status == "deleted" or (f.status == "created" and opts.scope ~= "hunk") then
     local D = disk_text(s, rel)
-    review.set_baseline(s, rel, D)
+    baseline.set_baseline(s, rel, D)
     if D == nil then
       local buf = session.buf_of_rel(s, rel)
       if buf and not vim.bo[buf].modified then
@@ -237,7 +239,7 @@ local function undo_one(s, rel, f, opts)
   end
   if not f.buf then
     load_hidden(s, rel)
-    local loaded = review.compute(s, rel)
+    local loaded = state.compute(s, rel)
     if not loaded then
       return false
     end
@@ -257,7 +259,7 @@ local function undo_one(s, rel, f, opts)
     end
   end
   local was_modified = vim.bo[buf].modified
-  local before = review.buf_lines(buf)
+  local before = txt.buf_lines(buf)
   local seq_before = buffers.undo_seq(buf)
   buffers.set_lines(buf, undone_cur(f, sels))
   buffers.record_undo(s, buf, { seq_before = seq_before, seq_after = buffers.undo_seq(buf), before = before })
@@ -291,7 +293,7 @@ local function act(kind, opts)
   end
   local fn = kind == "keep" and keep_one or undo_one
   if opts.scope == "all" then
-    review.refresh(s)
+    state.refresh(s)
     if #s.order == 0 then
       return util.notify("agentdiff: nothing pending")
     end
@@ -302,13 +304,13 @@ local function act(kind, opts)
       if s.conflicts[p] then
         M.resolve(kind == "keep" and "accept" or "mine", p)
       else
-        local f = review.compute(s, p)
+        local f = state.compute(s, p)
         if f then
           fn(s, p, f, { scope = "file" })
         end
       end
     end
-    review.refresh(s)
+    state.refresh(s)
     return
   end
   local rel, f = target(s, opts.path)
@@ -323,7 +325,7 @@ local function act(kind, opts)
   if not fn(s, rel, f, opts) then
     return util.notify("agentdiff: no pending change under the cursor")
   end
-  review.refresh(s, { rel })
+  state.refresh(s, { rel })
 end
 
 ---@param opts AgentdiffActionOpts?
@@ -356,7 +358,7 @@ local function move(dir, by_file)
   if not s then
     return
   end
-  review.refresh(s)
+  state.refresh(s)
   local entries = render.flatten(s)
   if #entries == 0 then
     return util.notify("agentdiff: nothing pending")
@@ -435,7 +437,7 @@ function M.open(rel)
   if not s then
     return
   end
-  local f = s.files[rel] or review.compute(s, rel)
+  local f = s.files[rel] or state.compute(s, rel)
   jump(s, rel, f and f.hunks[1] and f.hunks[1].b_lo or 0)
 end
 
@@ -457,19 +459,18 @@ function M.resolve(choice, path)
       -- Keep the agent's changes: its content wins where it overlaps your
       -- unsaved edits; your other unsaved edits stay (unsaved) on top.
       s.conflicts[rel] = nil
-      review.process(s, { rel }, "agent")
+      baseline.process(s, { rel }, "agent")
       local D = util.read_file(session.abs(s, rel))
       if buf and vim.api.nvim_buf_is_loaded(buf) then
         local synced = s.synced[buf]
         if synced == nil then
           synced = s.store:read("baseline", { rel })[rel]
         end
-        local merged =
-          merge.merge3(review.disp(buf, synced or nil), review.disp(buf, D), review.buf_lines(buf))
+        local merged = merge.merge3(txt.disp(buf, synced or nil), txt.disp(buf, D), txt.buf_lines(buf))
         buffers.resync(buf, merged)
         s.synced[buf] = D or false
       end
-      review.set_baseline(s, rel, D)
+      baseline.set_baseline(s, rel, D)
     elseif c == "agent" then
       s.conflicts[rel] = nil
       if buf then
@@ -486,16 +487,16 @@ function M.resolve(choice, path)
       else
         util.write_file(session.abs(s, rel), B)
       end
-      review.process(s, { rel }, "user")
+      baseline.process(s, { rel }, "user")
       if buf and vim.api.nvim_buf_is_loaded(buf) then
         -- keep the unsaved edits, but on top of the file now on disk
-        buffers.resync(buf, review.buf_lines(buf))
+        buffers.resync(buf, txt.buf_lines(buf))
       end
     elseif c == "compare" then
       require("agentdiff.sidebyside").compare_disk(s, rel)
       return
     end
-    review.refresh(s, { rel })
+    state.refresh(s, { rel })
   end
   if choice then
     return apply(choice)

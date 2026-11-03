@@ -5,7 +5,8 @@
 local M = {}
 
 local render = require("agentdiff.render")
-local review = require("agentdiff.review")
+local state = require("agentdiff.core.state")
+local txt = require("agentdiff.core.text")
 local session = require("agentdiff.core.session")
 local util = require("agentdiff.core.util")
 
@@ -50,7 +51,7 @@ function M.toggle()
     return M.close(s, buf)
   end
   local rel = session.rel_of_buf(s, buf)
-  local f = rel and review.compute(s, rel)
+  local f = rel and state.compute(s, rel)
   if not rel or not f or f.whole then
     return util.notify("agentdiff: no inline changes to show side by side")
   end
@@ -68,15 +69,9 @@ function M.toggle()
       if s.views[buf] ~= b or not vim.api.nvim_buf_is_valid(b) then
         return true
       end
-      local nf = review.compute(s, rel)
+      local nf = state.compute(s, rel)
       vim.bo[b].modifiable = true
-      vim.api.nvim_buf_set_lines(
-        b,
-        0,
-        -1,
-        false,
-        without_final_newline(nf and nf.base or review.buf_lines(buf))
-      )
+      vim.api.nvim_buf_set_lines(b, 0, -1, false, without_final_newline(nf and nf.base or txt.buf_lines(buf)))
       vim.bo[b].modifiable = false
       pcall(vim.cmd.diffupdate)
     end,
@@ -110,7 +105,7 @@ function M.compare_disk(s, rel)
   if not buf then
     return
   end
-  local disk = review.disp(buf, util.read_file(session.abs(s, rel)))
+  local disk = txt.disp(buf, util.read_file(session.abs(s, rel)))
   local win = vim.fn.bufwinid(buf)
   if win ~= -1 then
     vim.api.nvim_set_current_win(win)

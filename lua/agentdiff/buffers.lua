@@ -3,9 +3,11 @@
 ---@class AgentdiffBuffers
 local M = {}
 
-local claims = require("agentdiff.claims")
+local claims = require("agentdiff.core.claims")
 local merge = require("agentdiff.core.merge")
-local review = require("agentdiff.review")
+local baseline = require("agentdiff.core.baseline")
+local state = require("agentdiff.core.state")
+local txt = require("agentdiff.core.text")
 local session = require("agentdiff.core.session")
 local util = require("agentdiff.core.util")
 
@@ -144,7 +146,7 @@ local function on_change(s, buf)
   check_journal(s, buf)
   local rel = session.rel_of_buf(s, buf)
   if rel then
-    review.refresh(s, { rel })
+    state.refresh(s, { rel })
   end
 end
 
@@ -214,7 +216,7 @@ local function on_file_changed(s, buf)
     vim.v.fcs_choice = ""
     vim.schedule(function()
       if session.get() == s then
-        review.refresh(s, { rel })
+        state.refresh(s, { rel })
       end
     end)
     return
@@ -230,9 +232,9 @@ local function on_file_changed(s, buf)
   if synced == nil then
     synced = s.store:read("observed", { rel })[rel]
   end
-  local base = review.disp(buf, synced or nil)
-  local cur = review.buf_lines(buf)
-  local theirs = review.disp(buf, D)
+  local base = txt.disp(buf, synced or nil)
+  local cur = txt.buf_lines(buf)
+  local theirs = txt.disp(buf, D)
   local merged, conflict = merge.merge3(base, cur, theirs)
   if conflict then
     s.conflicts[rel] = true
@@ -248,7 +250,7 @@ local function on_file_changed(s, buf)
         ),
         vim.log.levels.WARN
       )
-      review.refresh(s, { rel })
+      state.refresh(s, { rel })
     end)
     return
   end
@@ -256,7 +258,7 @@ local function on_file_changed(s, buf)
   vim.schedule(function()
     if session.get() == s and vim.api.nvim_buf_is_loaded(buf) then
       M.resync(buf, merged)
-      review.refresh(s, { rel })
+      state.refresh(s, { rel })
     end
   end)
 end
@@ -275,7 +277,7 @@ function M.attach(s)
       s.base_override[ev.buf] = nil
       vim.schedule(function()
         if session.get() == s then
-          review.refresh(s, { rel })
+          state.refresh(s, { rel })
         end
       end)
     end,
@@ -296,7 +298,7 @@ function M.attach(s)
       local D0 = util.read_file(session.abs(s, rel))
       local O = s.store:read("observed", { rel })[rel]
       if (D0 or false) ~= (O or false) and not claims.claimed(s.store, rel, s.opts.claim_ttl) then
-        review.process(s, { rel }, "agent")
+        baseline.process(s, { rel }, "agent")
       end
       s.writing[rel] = true
       claims.add(s.store, { rel })
@@ -313,12 +315,12 @@ function M.attach(s)
       if not rel then
         return
       end
-      review.process(s, { rel }, "user")
+      baseline.process(s, { rel }, "user")
       s.writing[rel] = nil
       s.conflicts[rel] = nil
       s.synced[ev.buf] = util.read_file(session.abs(s, rel)) or false
       s.base_override[ev.buf] = nil
-      review.refresh(s, { rel })
+      state.refresh(s, { rel })
     end,
   })
 

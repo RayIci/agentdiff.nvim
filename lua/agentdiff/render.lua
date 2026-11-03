@@ -254,4 +254,9 @@ function M.all(s)
   M.hint(s)
 end
 
+-- Redraw whenever the review state is refreshed.
+require("agentdiff.core.events").on("refreshed", function(s)
+  M.all(s)
+end)
+
 return M

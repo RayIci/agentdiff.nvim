@@ -12,9 +12,11 @@
 ---@class AgentdiffDetect
 local M = {}
 
-local claims = require("agentdiff.claims")
+local claims = require("agentdiff.core.claims")
 local merge = require("agentdiff.core.merge")
-local review = require("agentdiff.review")
+local baseline = require("agentdiff.core.baseline")
+local state = require("agentdiff.core.state")
+local txt = require("agentdiff.core.text")
 local session = require("agentdiff.core.session")
 local store_mod = require("agentdiff.core.store")
 local util = require("agentdiff.core.util")
@@ -90,7 +92,7 @@ local function keep_staged(s)
       gone[#gone + 1] = p
     end
   end
-  return review.keep_staged(s, paths, staged, head, store_mod.ever_tracked(s.root, gone))
+  return baseline.keep_staged(s, paths, staged, head, store_mod.ever_tracked(s.root, gone))
 end
 
 ---Apply staging-keeps to what is already pending when review starts:
@@ -99,7 +101,7 @@ end
 ---@param s AgentdiffSession
 function M.reconcile(s)
   if s.opts.keep_on_stage and keep_staged(s) then
-    review.refresh(s)
+    state.refresh(s)
   end
 end
 
@@ -159,7 +161,7 @@ local function discarded(s, paths)
     local H = head[p] or nil
     local D = util.read_file(session.abs(s, p))
     local O = observed[p] or nil
-    if H and D and D ~= O and not review.is_whole(s, H, D, O) then
+    if H and D and D ~= O and not txt.is_whole(s, H, D, O) then
       local m = merge.merge3(merge.lines(O), merge.lines(D), merge.lines(H))
       res[p] = merge.join(m) == H
     end
@@ -244,17 +246,17 @@ local function handle(s, changes, mode)
     suspects[p] = nil
   end
 
-  review.process(s, users, "user")
-  review.process(s, agents, "agent")
+  baseline.process(s, users, "user")
+  baseline.process(s, agents, "agent")
   if #users > 0 or #agents > 0 then
     local all = vim.list_extend(vim.list_extend({}, users), agents)
     sync_buffers(s, all)
-    review.refresh(s)
+    state.refresh(s)
   end
   -- Staging keeps (after this poll's changes are attributed, so an agent edit
   -- staged in the same instant is kept too).
   if index_moved and s.opts.keep_on_stage and keep_staged(s) then
-    review.refresh(s)
+    state.refresh(s)
   end
   return need_confirm
 end

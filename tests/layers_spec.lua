@@ -18,8 +18,6 @@ local levels = {
   { 5, "^keymaps$" },
   { 6, "^integrations%." },
   -- flat modules not moved yet, at the level they are moving to
-  { 0, "^review$" },
-  { 1, "^claims$" },
   { 2, "^detect$" },
   { 2, "^buffers$" },
   { 3, "^render$" },
@@ -64,8 +62,6 @@ local allowed = {
   -- ALLOW-LIST (emptied by the end of the refactor)
   ["buffers -> render"] = true,
   ["panel -> init"] = true,
-  ["review -> claims"] = true,
-  ["review -> render"] = true,
 }
 
 describe("layers", function()

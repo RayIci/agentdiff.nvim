@@ -8,11 +8,11 @@ local M = {}
 
 local actions = require("agentdiff.actions")
 local buffers = require("agentdiff.buffers")
-local claims = require("agentdiff.claims")
+local claims = require("agentdiff.core.claims")
 local config = require("agentdiff.config")
 local detect = require("agentdiff.detect")
 local render = require("agentdiff.render")
-local review = require("agentdiff.review")
+local state = require("agentdiff.core.state")
 local session = require("agentdiff.core.session")
 local store_mod = require("agentdiff.core.store")
 local util = require("agentdiff.core.util")
@@ -93,7 +93,7 @@ function M.start()
     store:drop_unreviewable()
     vim.schedule(function()
       if session.get() == s then
-        review.refresh(s)
+        state.refresh(s)
         detect.reconcile(s)
         detect.poll()
       end
@@ -127,7 +127,7 @@ function M.start()
           s.synced[b] = util.read_file(session.abs(s, rel)) or false
         end
       end
-      review.refresh(s)
+      state.refresh(s)
     end)
   end
 end

@@ -6,7 +6,7 @@
 ---@class AgentdiffPanel
 local M = {}
 
-local review = require("agentdiff.review")
+local review_state = require("agentdiff.core.state")
 local session = require("agentdiff.core.session")
 
 ---@type { buf: integer?, win: integer?, paths: table<integer, string>, au: integer? }
@@ -75,7 +75,7 @@ function M.open()
   if not s then
     return
   end
-  review.refresh(s)
+  review_state.refresh(s)
   if M.is_open() then
     return M.render()
   end
