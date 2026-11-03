@@ -35,10 +35,10 @@ Each group ends with `make test`, `make fmt-check` and lua_ls clean, and is comm
 
 ## 7. Integrations
 
-- [ ] 7.1 Add `integrations/neotree.lua` (component, renderers, setup); verify tests for "Component marks a changed file" and "Expanded directory"
-- [ ] 7.2 Add `integrations/oil.lua` (paths, setup); verify a test for "Rename in oil" driving the `OilActionsPre`/`OilActionsPost` events
-- [ ] 7.3 Add `integrations/grug_far.lua` (`on_before_edit_file`); verify a test for "Project-wide replace" (claims recorded, `on_finish("success")` called)
-- [ ] 7.4 Verify tests for "Not loaded by default" (`package.loaded` after setup) and "Other plugin absent" (requiring each integration without neo-tree/oil/grug-far on the runtimepath)
+- [x] 7.1 Add `integrations/neotree.lua` (component, renderers, setup); verify tests for "Component marks a changed file" and "Expanded directory"
+- [x] 7.2 Add `integrations/oil.lua` (paths, setup); verify a test for "Rename in oil" driving the `OilActionsPre`/`OilActionsPost` events
+- [x] 7.3 Add `integrations/grug_far.lua` (`on_before_edit_file`); verify a test for "Project-wide replace" (claims recorded, `on_finish("success")` called)
+- [x] 7.4 Verify tests for "Not loaded by default" (`package.loaded` after setup) and "Other plugin absent" (requiring each integration without neo-tree/oil/grug-far on the runtimepath)
 
 ## 8. Strict layering and docs
 

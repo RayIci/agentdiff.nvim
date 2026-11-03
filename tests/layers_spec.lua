@@ -41,7 +41,11 @@ local function edges()
       if mod == "init" or mod:match("%.init$") then
         mod = mod == "init" and "init" or mod
       end
-      local text = table.concat(vim.fn.readfile(root .. "/" .. name), "\n")
+      -- code only: usage examples in comments are not dependencies
+      local code = vim.tbl_filter(function(l)
+        return not l:match("^%s*%-%-")
+      end, vim.fn.readfile(root .. "/" .. name))
+      local text = table.concat(code, "\n")
       for to in text:gmatch('require%("agentdiff%.([%w_%.]+)"%)') do
         out[#out + 1] = { from = mod, to = to, file = name }
       end
