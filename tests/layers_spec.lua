@@ -7,7 +7,9 @@ local root = repo .. "/lua/agentdiff"
 local levels = {
   { 0, "^core%." },
   { 0, "^config$" },
+  { 1, "^attribution$" },
   { 1, "^attribution%." },
+  { 1, "^harness$" },
   { 1, "^harness%." },
   { 2, "^detect%." },
   { 2, "^editor%." },
@@ -18,7 +20,6 @@ local levels = {
   { 5, "^keymaps$" },
   { 6, "^integrations%." },
   -- flat modules not moved yet, at the level they are moving to
-  { 2, "^detect$" },
   { 2, "^buffers$" },
   { 3, "^render$" },
   { 3, "^panel$" },

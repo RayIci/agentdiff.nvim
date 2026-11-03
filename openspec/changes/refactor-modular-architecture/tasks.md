@@ -9,15 +9,15 @@ Each group ends with `make test`, `make fmt-check` and lua_ls clean, and is comm
 
 ## 2. core/
 
-- [ ] 2.1 `git mv` `merge`, `store`, `util`, `session` into `core/` and update every require (code and tests); verify the suite passes
-- [ ] 2.2 Split `review.lua` into `core/text.lua`, `core/state.lua`, `core/baseline.lua` and `core/events.lua` (D2, D3); verify the suite passes
-- [ ] 2.3 Replace `state.refresh → render` with the event bus: overlay and hint subscribe to `"refreshed"`; remove the `review → render` and `panel → detect` violations from the allow-list; verify the suite and the layer test pass
+- [x] 2.1 `git mv` `merge`, `store`, `util`, `session` into `core/` and update every require (code and tests); verify the suite passes
+- [x] 2.2 Split `review.lua` into `core/text.lua`, `core/state.lua`, `core/baseline.lua` and `core/events.lua` (D2, D3); verify the suite passes
+- [x] 2.3 Replace `state.refresh → render` with the event bus: overlay and hint subscribe to `"refreshed"`; remove the `review → render` and `panel → detect` violations from the allow-list; verify the suite and the layer test pass
 
 ## 3. attribution/ and detect/
 
-- [ ] 3.1 Move `claims.lua` to `attribution/claims.lua`; add `attribution/init.lua` with the interface and registry (D4); verify the suite passes
-- [ ] 3.2 Extract the classification from `detect.handle` into `attribution/writer.lua` behind the interface, with git helpers passed in; verify the suite passes
-- [ ] 3.3 Split the rest of `detect.lua` into `detect/poller.lua` and `detect/git.lua`; verify the suite passes
+- [x] 3.1 Move the claim journal to `core/claims.lua` (store data the baseline update consumes) and shell recognition to `attribution/shell.lua`; add `attribution/init.lua` with the interface and registry (D4); verify the suite passes
+- [x] 3.2 Extract the classification from `detect.handle` into `attribution/writer.lua` behind the interface, with git helpers passed in; verify the suite passes
+- [x] 3.3 Split the rest of `detect.lua` into `detect/poller.lua` and `detect/git.lua`; verify the suite passes
 
 ## 4. editor/ and actions/
 

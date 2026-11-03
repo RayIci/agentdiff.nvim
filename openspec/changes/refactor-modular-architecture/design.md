@@ -70,7 +70,8 @@ Rule: a module may require only modules in its own layer or below. `core/` requi
 | `review.lua` `compute`, `refresh`, text helpers | `core/state.lua` (review state per file, `refresh`) and `core/text.lua` (`lines/disp/undisp/buf_lines/is_whole`) |
 | `review.lua` `process`, `set_baseline`, `keep_staged` | `core/baseline.lua` (the author rule and baseline writes) |
 | `review.lua` `fire_if_changed` | `core/events.lua` (internal bus + `User AgentdiffChanged`) |
-| `claims.lua` | `attribution/claims.lua` |
+| `claims.lua` journal (`add`, `claimed`, `release`, `gc`) | `core/claims.lua`: claims are store data, and the baseline update consumes them |
+| `claims.lua` `is_shell_cmdline` | `attribution/shell.lua` |
 | `detect.lua` classification (claims, guard, discards, settle) | `attribution/writer.lua` |
 | (new) | `attribution/init.lua`: interface + registry |
 | `detect.lua` timer, focus, shell windows, poll | `detect/poller.lua` |
