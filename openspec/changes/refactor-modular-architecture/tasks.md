@@ -4,8 +4,8 @@ Each group ends with `make test`, `make fmt-check` and lua_ls clean, and is comm
 
 ## 1. Safety net
 
-- [ ] 1.1 Add `tests/layers_spec.lua`: parse every `require("agentdiff.…")` under `lua/agentdiff/`, map modules to layers (D1) and fail on upward dependencies, with an allow-list of today's violations; verify it passes now and fails when a new upward require is added on purpose
-- [ ] 1.2 Record the public surface (every function on `require("agentdiff")`, every `:Agentdiff` subcommand, every option, every highlight group) in a test; verify it passes before any move
+- [x] 1.1 Add `tests/layers_spec.lua`: parse every `require("agentdiff.…")` under `lua/agentdiff/`, map modules to layers (D1) and fail on upward dependencies, with an allow-list of today's violations; verify it passes now and fails when a new upward require is added on purpose
+- [x] 1.2 Record the public surface (every function on `require("agentdiff")`, every `:Agentdiff` subcommand, every option, every highlight group) in a test; verify it passes before any move
 
 ## 2. core/
 
