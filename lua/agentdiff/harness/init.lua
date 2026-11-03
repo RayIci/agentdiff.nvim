@@ -20,7 +20,7 @@ local M = {}
 
 ---@class AgentdiffHarness
 ---@field name string
----@field parse fun(payload: table): AgentdiffHarnessReport?  nil when the payload is not a file edit
+---@field parse fun(payload: table, hint?: string): AgentdiffHarnessReport?  nil when the payload is not a file edit
 ---@field install fun(scope: "user"|"project", opts: table): boolean, string?
 ---@field uninstall fun(scope: "user"|"project", opts: table): boolean, string?
 ---@field status fun(opts: table): AgentdiffHarnessStatus
@@ -46,5 +46,8 @@ function M.names()
   table.sort(names)
   return names
 end
+
+M.register(require("agentdiff.harness.claude"))
+M.register(require("agentdiff.harness.copilot"))
 
 return M

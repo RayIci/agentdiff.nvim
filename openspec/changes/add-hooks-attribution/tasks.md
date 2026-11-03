@@ -9,8 +9,8 @@ Each group ends with `make test`, `make fmt-check` and lua_ls clean, and is comm
 
 ## 2. Adapters
 
-- [ ] 2.1 Add `harness/claude.lua` `parse` (D4); verify a test for "Edit payload" plus `Write`, `MultiEdit`, `NotebookEdit`, relative paths, and non-edit tools returning nil
-- [ ] 2.2 Add `harness/copilot.lua` `parse`; verify tests for "camelCase payload", "Patch payload", the VS Code-style payload, and non-edit tools
+- [x] 2.1 Add `harness/claude.lua` `parse` (D4); verify a test for "Edit payload" plus `Write`, `MultiEdit`, `NotebookEdit`, relative paths, and non-edit tools returning nil
+- [x] 2.2 Add `harness/copilot.lua` `parse`; verify tests for "camelCase payload", "Patch payload", the VS Code-style payload, and non-edit tools
 
 ## 3. Reporter and hooks mode
 
