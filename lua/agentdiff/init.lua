@@ -6,6 +6,9 @@
 ---@class Agentdiff
 local M = {}
 
+local claim_mod = require("agentdiff.actions.claim")
+local command = require("agentdiff.command")
+local keymaps = require("agentdiff.keymaps")
 local navigate = require("agentdiff.actions.navigate")
 local onoff = require("agentdiff.actions.onoff")
 local reset_mod = require("agentdiff.actions.reset")
@@ -210,35 +213,8 @@ end
 -- Claims, status, events ------------------------------------------------------
 
 ---Mark the next disk changes of these paths (absolute or project-relative) as
----the user's, e.g. right before or after a file explorer renames them. A path
----that is an existing directory claims every file under it.
----@param paths string[]
-function M.claim(paths)
-  local s = session.get()
-  if not s then
-    return
-  end
-  local rels = {}
-  local function add(abs)
-    local rel = util.relative(s.root, vim.fs.normalize(abs))
-    if rel then
-      rels[#rels + 1] = rel
-    end
-  end
-  for _, p in ipairs(paths) do
-    local abs = vim.fs.normalize(p:sub(1, 1) == "/" and p or session.abs(s, p)):gsub("/$", "")
-    add(abs)
-    local st = vim.uv.fs_stat(abs)
-    if st and st.type == "directory" then
-      for name, kind in vim.fs.dir(abs, { depth = math.huge }) do
-        if kind == "file" then
-          add(abs .. "/" .. name)
-        end
-      end
-    end
-  end
-  claims.add(s.store, rels)
-end
+---the user's. A path that is an existing directory claims every file under it.
+M.claim = claim_mod.claim
 
 ---Statusline summary: "3 files · 7 changes", or "" when nothing is pending.
 M.status = status.status
@@ -252,165 +228,7 @@ M.files = status.files
 -- Command ---------------------------------------------------------------------
 
 ---@type table<string, fun(range: integer[]?)>
-M.subcommands = {
-  next = function()
-    M.next()
-  end,
-  prev = function()
-    M.prev()
-  end,
-  next_file = function()
-    M.next_file()
-  end,
-  prev_file = function()
-    M.prev_file()
-  end,
-  keep = function(range)
-    M.keep({ range = range })
-  end,
-  undo = function(range)
-    M.undo({ range = range })
-  end,
-  keep_file = function()
-    M.keep_file()
-  end,
-  undo_file = function()
-    M.undo_file()
-  end,
-  keep_all = function()
-    M.keep_all()
-  end,
-  undo_all = function()
-    M.undo_all()
-  end,
-  panel = function()
-    M.panel()
-  end,
-  view = function()
-    M.toggle_view()
-  end,
-  overlay = function()
-    M.toggle_overlay()
-  end,
-  resolve = function()
-    M.resolve()
-  end,
-  refresh = function()
-    detect.now("poll")
-  end,
-  enable = function()
-    M.enable()
-  end,
-  disable = function()
-    M.disable()
-  end,
-  toggle = function()
-    M.toggle()
-  end,
-  reset = function()
-    M.reset()
-  end,
-  status = function()
-    if not M.enabled() then
-      return util.notify("agentdiff: off")
-    end
-    local st = M.status()
-    util.notify(st ~= "" and st or "agentdiff: nothing pending")
-  end,
-}
-
-local function create_command()
-  vim.api.nvim_create_user_command("Agentdiff", function(cmd)
-    local name = cmd.fargs[1] or "panel"
-    local fn = M.subcommands[name]
-    if not fn then
-      return util.notify("agentdiff: unknown subcommand '" .. name .. "'", vim.log.levels.ERROR)
-    end
-    fn(cmd.range > 0 and { cmd.line1, cmd.line2 } or nil)
-  end, {
-    nargs = "?",
-    range = true,
-    desc = "agentdiff: review agent changes",
-    complete = function(lead)
-      local names = vim.tbl_keys(M.subcommands)
-      table.sort(names)
-      return vim.tbl_filter(function(n)
-        return n:find(lead, 1, true) == 1
-      end, names)
-    end,
-  })
-end
-
--- Keymaps ---------------------------------------------------------------------
-
-local normal_actions = {
-  next = { M.next, "Next agent change" },
-  prev = { M.prev, "Previous agent change" },
-  next_file = { M.next_file, "Next changed file" },
-  prev_file = { M.prev_file, "Previous changed file" },
-  keep = {
-    function()
-      M.keep()
-    end,
-    "Keep change",
-  },
-  undo = {
-    function()
-      M.undo()
-    end,
-    "Undo change",
-  },
-  keep_file = { M.keep_file, "Keep file" },
-  undo_file = { M.undo_file, "Undo file" },
-  keep_all = {
-    function()
-      M.keep_all()
-    end,
-    "Keep all",
-  },
-  undo_all = {
-    function()
-      M.undo_all()
-    end,
-    "Undo all",
-  },
-  panel = { M.panel, "Changed files panel" },
-  view = { M.toggle_view, "Toggle side-by-side" },
-  overlay = { M.toggle_overlay, "Hide/show overlay" },
-  resolve = {
-    function()
-      M.resolve()
-    end,
-    "Resolve conflict",
-  },
-}
-
----@return integer[]
-local function visual_range()
-  local a, b = vim.fn.line("v"), vim.fn.line(".")
-  vim.api.nvim_feedkeys(vim.keycode("<Esc>"), "nx", false)
-  return { math.min(a, b), math.max(a, b) }
-end
-
----@param keys AgentdiffKeymaps
-local function create_keymaps(keys)
-  for name, lhs in pairs(keys) do
-    local a = normal_actions[name]
-    if a then
-      vim.keymap.set("n", lhs, a[1], { desc = a[2] })
-    end
-  end
-  if keys.keep then
-    vim.keymap.set("x", keys.keep, function()
-      M.keep({ range = visual_range() })
-    end, { desc = "Keep selected lines" })
-  end
-  if keys.undo then
-    vim.keymap.set("x", keys.undo, function()
-      M.undo({ range = visual_range() })
-    end, { desc = "Undo selected lines" })
-  end
-end
+M.subcommands = command.subcommands(M)
 
 require("agentdiff.ui.panel").set_handlers({
   status = function()
@@ -454,9 +272,9 @@ function M.setup(opts)
       end
     end,
   })
-  create_command()
+  command.create(M.subcommands)
   if type(o.keymaps) == "table" then
-    create_keymaps(o.keymaps)
+    keymaps.create(o.keymaps, M)
   end
   if o.auto_start then
     if vim.v.vim_did_enter == 1 then
