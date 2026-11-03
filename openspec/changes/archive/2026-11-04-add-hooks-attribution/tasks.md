@@ -25,7 +25,7 @@ Each group ends with `make test`, `make fmt-check` and lua_ls clean, and is comm
 ## 5. Docs and end-to-end
 
 - [x] 5.1 Document the hooks mode, the reporter, the adapters and the commands in the README, `doc/agentdiff.txt`, `docs/attribution.md` and `docs/extending.md`; verify the API doc tests, `:helptags` and Mermaid parsing
-- [ ] 5.2 Run the reporter by hand with a real Claude Code payload shape and a Copilot payload shape against a temp store, and start Neovim with a full configuration using `attribution = "hooks"`; verify a reported change shows as pending and an unreported one doesn't
+- [x] 5.2 Run the reporter by hand with a real Claude Code payload shape and a Copilot payload shape against a temp store, and start Neovim with a full configuration using `attribution = "hooks"`; verify a reported change shows as pending and an unreported one doesn't
 
 ## Workflow follow-up
 
