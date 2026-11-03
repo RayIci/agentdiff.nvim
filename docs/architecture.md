@@ -1,13 +1,13 @@
 # Architecture
 
-agentdiff is a single Lua plugin (`lua/agentdiff/`, ~3 800 lines in 14
+agentdiff is a single Lua plugin (`lua/agentdiff/`, ~4 600 lines in 37
 modules) with no plugin dependencies. It needs only Neovim ≥ 0.12 and the
 `git` executable, which it uses as a content-addressed store, never as a
 version-control tool on your project.
 
 - [The big picture](#the-big-picture)
 - [Module map](#module-map)
-- [Layers](#layers)
+- [How the layers talk](#how-the-layers-talk)
 - [Data model: three texts per file](#data-model-three-texts-per-file)
 - [The store on disk](#the-store-on-disk)
 - [Session state](#session-state)
@@ -45,78 +45,78 @@ knowing exactly what Neovim itself wrote (see [attribution](attribution.md)).
 
 ## Module map
 
-```mermaid
-flowchart TB
-    init["init.lua<br/>setup · command · keymaps · public API · on/off"]
-    config["config.lua<br/>options + validation"]
-    session["session.lua<br/>per-project state"]
-    detect["detect.lua<br/>poll loop · settle · git-guard · discards"]
-    buffers["buffers.lua<br/>write hooks · FileChangedShell · undo journal"]
-    claims["claims.lua<br/>claim journal · shell commands"]
-    review["review.lua<br/>author rule · per-file state · refresh"]
-    actions["actions.lua<br/>navigation · keep · undo · resolve"]
-    render["render.lua<br/>extmarks · hint · highlights"]
-    panel["panel.lua<br/>changed-files panel"]
-    sbs["sidebyside.lua<br/>baseline diff view"]
-    merge["merge.lua<br/>line diff · merge3"]
-    store["store.lua<br/>private git store"]
-    util["util.lua<br/>fs · time · paths"]
-
-    init --> config & session & detect & buffers & actions & render & panel & sbs & claims & store
-    detect --> review & claims & store & merge
-    buffers --> review & merge & claims
-    actions --> review & buffers & render & merge & claims
-    review --> store & merge & render
-    panel --> review
-    sbs --> review & render
-    session --> store
-    store --> util
-    review --> util
-    detect --> util
-```
-
-| Module | Lines | Responsibility |
-|---|---:|---|
-| `init.lua` | 552 | `setup()`, `:Agentdiff`, optional keymaps, public API, persisted on/off state, test hooks |
-| `actions.lua` | 493 | navigation, keep / undo at every scope (incl. line ranges), conflict resolution |
-| `store.lua` | 483 | the private git store: sanitized git runner, the two indexes, snapshot, lock, read-only project queries |
-| `buffers.lua` | 376 | Neovim's own writes, external changes to loaded buffers, conflicts, layout-preserving wipe, undo journal |
-| `detect.lua` | 359 | poll timer, settle period, shell-command windows, git-guard, discard detection |
-| `review.lua` | 310 | the author rule (`process`), per-file review state (`compute`), `refresh`, change events |
-| `render.lua` | 257 | the inline overlay, the hint, change counting and navigation order |
-| `merge.lua` | 212 | line arrays, hunks, three-way merge |
-| `panel.lua` | 156 | the changed-files panel |
-| `session.lua` | 145 | the running session: store, shared state, path ↔ buffer mapping, reviewable paths |
-| `config.lua` | 134 | defaults, validation |
-| `claims.lua` | 134 | the claim journal, shell command recognition |
-| `sidebyside.lua` | 128 | the side-by-side baseline view, disk comparison for conflicts |
-| `util.lua` | 69 | file I/O, wall-clock time, relative paths |
-
-## Layers
+37 modules in 8 directories, ~4 600 lines. Each directory is one concern, and
+a module may only require modules on its own level or below; a test
+(`tests/layers_spec.lua`) enforces it.
 
 ```mermaid
 flowchart TB
-    subgraph L4["Presentation"]
-        render2["render"] --- panel2["panel"] --- sbs2["sidebyside"]
+    subgraph L6["6 · integrations/ (optional, host-loaded)"]
+        nt["neotree"] ~~~ oil["oil"] ~~~ gf["grug_far"]
     end
-    subgraph L3["Actions"]
-        actions2["actions (keep · undo · navigate · resolve)"]
+    subgraph L5["5 · entry point"]
+        init["init<br/>setup · start/stop · public API"] ~~~ cmd["command<br/>:Agentdiff"] ~~~ km["keymaps"]
     end
-    subgraph L2["Attribution"]
-        detect2["detect"] --- buffers2["buffers"] --- claims2["claims"] --- review2["review"]
+    subgraph L4["4 · actions/"]
+        rev["review<br/>keep · undo · ranges"] ~~~ nav["navigate"] ~~~ res["resolve"] ~~~ oo["onoff · reset · claim"]
     end
-    subgraph L1["Content"]
-        merge2["merge (pure, no I/O)"] --- store2["store (git, I/O)"]
+    subgraph L3["3 · ui/"]
+        ov["overlay"] ~~~ hint["hint"] ~~~ panel["panel"] ~~~ sbs["sidebyside"] ~~~ st["status"]
     end
-    L4 --> L3 --> L2 --> L1
+    subgraph L2["2 · detect/ · editor/"]
+        poll["poller<br/>timer · focus · shell"] ~~~ git["git<br/>guard · discards · staging"] ~~~ buf["buffers<br/>writes · FileChangedShell"]
+    end
+    subgraph L1["1 · attribution/ · harness/"]
+        reg["attribution registry"] ~~~ wr["writer mode"] ~~~ sh["shell"] ~~~ hr["harness registry"]
+    end
+    subgraph L0["0 · core/ · config"]
+        mg["merge"] ~~~ sto["store"] ~~~ ses["session"] ~~~ stt["state"] ~~~ bl["baseline"] ~~~ ev["events"] ~~~ more["text · positions · claims · util"]
+    end
+    L6 --> L5 --> L4 --> L3 --> L2 --> L1 --> L0
 ```
 
-- **Content**: `merge.lua` is pure (no I/O, no Neovim state) and fully unit
-  tested; `store.lua` is the only module that runs git.
-- **Attribution** decides *who* changed a file and updates the baseline
-  accordingly. It's the heart of the plugin; see [attribution.md](attribution.md).
-- **Actions** turn user intent (keep, undo) into baseline or file edits.
-- **Presentation** only reads the review state and draws it.
+| Level | Directory | Modules | Responsibility |
+|---:|---|---|---|
+| 0 | `core/`, `config` | `merge` (212), `store` (520), `session` (145), `state` (154), `baseline` (146), `text` (81), `positions` (72), `claims` (71), `events` (41), `util` (69), `config` (137) | content and state: the line model and merge3, the private git store, per-file review state, the author rule and baseline writes, change events |
+| 1 | `attribution/` | `init` (58), `writer` (78), `shell` (70) | *who* changed a file: the mode interface and registry, the writer mode, shell-command recognition |
+| 1 | `harness/` | `init` (50) | the adapter interface and registry, one adapter per agent CLI |
+| 2 | `detect/` | `poller` (218), `git` (189) | *when* to look: timer, focus, shell windows; read-only views of the project's git (guard, discards, staging-keeps) |
+| 2 | `editor/` | `buffers` (371) | Neovim's own writes, external changes to loaded buffers, conflicts, the undo journal |
+| 3 | `ui/` | `overlay` (114), `hint` (92), `panel` (174), `sidebyside` (123), `status` (75), `highlights` (15) | drawing; reads state, never changes the baseline |
+| 4 | `actions/` | `review` (306), `navigate` (115), `resolve` (93), `onoff` (94), `reset` (30), `common` (49), `claim` (40) | user intent turned into baseline or file edits |
+| 5 | entry point | `init` (318), `command` (104), `keymaps` (77) | setup, start/stop, the public API, `:Agentdiff`, optional keymaps |
+| 6 | `integrations/` | `neotree` (72), `oil` (40), `grug_far` (20) | optional glue for other plugins; requires only the public `agentdiff` module |
+
+## How the layers talk
+
+Lower levels never call upward. Where a lower level has to notify a higher
+one, it emits an event or calls a function that was handed to it:
+
+```mermaid
+flowchart LR
+    state["core/state.refresh()"] -- "emit refreshed" --> ev(("core/events"))
+    ev -- subscriber --> overlay["ui/overlay redraws"]
+    state -- changed() --> user(["User AgentdiffChanged<br/>(statuslines, trees, panel)"])
+    init["init (entry point)"] -- "set_handlers(keep, undo, open, …)" --> panel["ui/panel keys"]
+    init -- "lifecycle { start, stop }" --> onoff["actions/onoff · reset"]
+    poller["detect/poller"] -- "classify(changes, ctx)" --> mode["attribution mode"]
+    poller -- "ctx.produced · ctx.discarded" --> mode
+```
+
+- **The overlay** subscribes to the internal `"refreshed"` event instead of
+  being called by the review state.
+- **The panel's keys** call handlers the entry point injects, so `ui/` never
+  requires `actions/` or the public module.
+- **On/off and reset** restart the session through a `{ start, stop }`
+  lifecycle passed in by the entry point.
+- **The attribution mode** gets git helpers through its context, so a mode
+  can use git-guard and discard detection without requiring `detect/`.
+
+`core/merge.lua` is pure (no I/O, no Neovim state) and fully unit tested;
+`core/store.lua` is the only module that runs git against the store, and
+`detect/git.lua` the only one that reads the project's own repository.
+See [extending.md](extending.md) for adding an attribution mode, a harness
+adapter or an integration.
 
 ## Data model: three texts per file
 

@@ -287,53 +287,46 @@ them.
     AgentdiffTreeFile   file-tree mark of a changed file     (DiagnosticWarn)
     AgentdiffTreeDir    file-tree mark of a directory        (DiagnosticWarn)
 
-==============================================================================
+========================================================================================================================================================
 10. INTEGRATIONS                                *agentdiff-integrations*
 
-agentdiff knows no other plugin. These are host-side recipes.
+Optional modules under `agentdiff.integrations`. agentdiff never loads them
+itself, and they require the other plugin only when you call them, so
+requiring one is safe even when that plugin isn't installed.
 
-oil.nvim~
-    Claim oil's file operations so renames and deletes aren't the agent's: >lua
-    vim.api.nvim_create_autocmd("User", {
-      pattern = { "OilActionsPre", "OilActionsPost" },
-      callback = function(ev)
-        local paths = {}
-        for _, a in ipairs(ev.data.actions or {}) do
-          for _, key in ipairs({ "url", "src_url", "dest_url" }) do
-            local p = type(a[key]) == "string" and a[key]:match("^oil://(.*)$")
-            if p then paths[#paths + 1] = p end
-          end
-        end
-        require("agentdiff").claim(paths)
-      end,
+neo-tree.nvim~                               *agentdiff-integrations-neotree*
+    A review mark (`󰚩`) on files with pending changes and on collapsed
+    directories containing one, next to neo-tree's git marks: >lua
+    local nt = require("agentdiff.integrations.neotree")
+    require("neo-tree").setup({
+      filesystem = {
+        components = { agentdiff = nt.component },
+        renderers = nt.renderers(),  -- neo-tree's defaults + the component
+      },
     })
+    nt.setup()                       -- refresh the tree on changes
 <
-grug-far.nvim~
+    Change the mark with `nt.icon`; it uses |agentdiff-highlights|
+    `AgentdiffTreeFile` and `AgentdiffTreeDir`.
+
+oil.nvim~                                       *agentdiff-integrations-oil*
+    Claim oil's file operations so renames, moves and deletes aren't the
+    agent's: >lua
+    require("agentdiff.integrations.oil").setup()
+<
+grug-far.nvim~                             *agentdiff-integrations-grug-far*
     Claim each file right before grug-far rewrites it: >lua
     require("grug-far").setup({
       hooks = {
-        on_before_edit_file = function(on_finish, file)
-          require("agentdiff").claim({ vim.fn.fnamemodify(file.path, ":p") })
-          on_finish("success")
-        end,
+        on_before_edit_file = require("agentdiff.integrations.grug_far").on_before_edit_file,
       },
     })
 <
-neo-tree.nvim~
-    Add a component that shows a mark on changed files and on collapsed
-    directories containing one: >lua
-    local function agentdiff_component(_, node, _)
-      local st = require("agentdiff").path_status(node.path)
-      if not st or (st == "dir" and node:is_expanded()) then return {} end
-      return { text = "󰚩 ",
-        highlight = st == "file" and "AgentdiffTreeFile" or "AgentdiffTreeDir" }
-    end
-<
-    Register it in `filesystem.components`, add `{ "agentdiff" }` to the
-    file and directory renderers, and refresh the filesystem source on
-    |User_AgentdiffChanged|.
+Other tools~
+    Any tool that writes files itself can call |agentdiff.claim()| with the
+    paths, before or right after writing.
 
-==============================================================================
+====
 11. WHO CHANGED WHAT                             *agentdiff-attribution*
 
 Every file has a baseline: the last version you agreed with. Pending changes

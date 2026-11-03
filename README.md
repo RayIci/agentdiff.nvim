@@ -145,6 +145,29 @@ undoing a deletion restores the file.
 Panel keys: `<CR>`/`o` open at the first change · `K`/`U` keep/undo the file ·
 `gK`/`gU` keep/undo all · `R` refresh · `q` close.
 
+## Integrations
+
+Optional modules, never loaded unless you require them:
+
+```lua
+-- neo-tree: review marks on changed files and folders
+local nt = require("agentdiff.integrations.neotree")
+require("neo-tree").setup({
+  filesystem = { components = { agentdiff = nt.component }, renderers = nt.renderers() },
+})
+nt.setup()
+
+-- oil: renames/moves/deletes in oil are yours, not the agent's
+require("agentdiff.integrations.oil").setup()
+
+-- grug-far: project-wide replaces are yours
+require("grug-far").setup({
+  hooks = { on_before_edit_file = require("agentdiff.integrations.grug_far").on_before_edit_file },
+})
+```
+
+Writing your own: see [docs/extending.md](docs/extending.md).
+
 ## Events and statusline
 
 - `User AgentdiffChanged` fires whenever the set of pending changes changes

@@ -1,6 +1,6 @@
 # merge3: the three-way merge
 
-`merge.lua` is the only algorithmic piece of agentdiff, and it's pure: line
+`core/merge.lua` is the only algorithmic piece of agentdiff, and it's pure: line
 arrays in, line arrays out, no I/O. It's used for three things:
 
 | Use | base | ours | theirs | Result |

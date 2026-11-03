@@ -36,14 +36,14 @@ flowchart LR
 
 ## What's covered
 
-134 tests in 13 spec files.
+149 tests in 17 spec files.
 
 ```mermaid
 xychart-beta
     title "Tests per spec file"
-    x-axis [actions, staging, merge, views, detect, store, fixes, render, session, buffers, attribution, smoke, api]
+    x-axis [actions, staging, merge, views, detect, store, fixes, integrations, render, session, buffers, attribution, surface, smoke, api, layers, harness]
     y-axis "tests" 0 --> 20
-    bar [19, 18, 17, 15, 14, 12, 11, 8, 6, 5, 5, 2, 2]
+    bar [19, 18, 17, 15, 14, 12, 11, 9, 8, 6, 5, 5, 4, 2, 2, 1, 1]
 ```
 
 ```mermaid
@@ -60,6 +60,8 @@ pie showData
     "Startup and guards" : 6
     "Unsaved buffers" : 5
     "Author rule" : 5
+    "Integrations" : 9
+    "Architecture guards (surface, layers, harness)" : 6
     "Smoke and API docs" : 4
 ```
 
@@ -77,6 +79,10 @@ pie showData
 | `staging_spec` | staging keeps (file, hunk, `commit -a`, created and deleted files, unstaging, the option), the startup check and committed deletions, keep and undo ending a conflict, reset |
 | `fixes_spec` | commit messages, ignored files, discards through git, windows never closed, the persisted toggle |
 | `api_spec` | every function and subcommand in the README exists, and the subcommand table matches the code |
+| `integrations_spec` | neo-tree component and renderers, oil and grug-far claims, integrations staying optional |
+| `surface_spec` | the public API, subcommands, options and highlight groups stay exactly as they are |
+| `layers_spec` | the dependency rule: no module requires one on a higher level |
+| `harness_spec` | the harness adapter registry |
 | `smoke_spec` | the plugin loads; per-test fixtures work |
 
 Each spec scenario from the original OpenSpec change has a test named after

@@ -11,6 +11,7 @@ How agentdiff works under the hood. For setup, options and the API, see the
 | [merge3.md](merge3.md) | the three-way merge, with worked examples |
 | [review-ui.md](review-ui.md) | the overlay, navigation order, keep/undo (including partial ranges), created/deleted files, panel, side-by-side, statusline, file tree |
 | [testing.md](testing.md) | how the headless suite works, what each spec file covers, charts of the test distribution |
+| [extending.md](extending.md) | adding an attribution mode, a harness adapter or an integration |
 | [decisions.md](decisions.md) | comparison with VS Code's agent mode and the reasoning behind the main design choices |
 
 Reference documentation for users is in [`doc/agentdiff.txt`](../doc/agentdiff.txt) (`:help agentdiff`).
