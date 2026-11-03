@@ -37,11 +37,19 @@ function M.get(name)
   return modes[name]
 end
 
----The mode in use for a session.
----@param _ AgentdiffSession
+---The mode in use for a session (the `attribution` option).
+---@param s AgentdiffSession
 ---@return AgentdiffAttribution
-function M.active(_)
-  return modes.writer
+function M.active(s)
+  return modes[s.opts.attribution] or modes.writer
+end
+
+---Names of the registered modes, sorted.
+---@return string[]
+function M.names()
+  local names = vim.tbl_keys(modes)
+  table.sort(names)
+  return names
 end
 
 ---Forget every mode's per-session state.

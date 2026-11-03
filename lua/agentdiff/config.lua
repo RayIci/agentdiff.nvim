@@ -22,6 +22,7 @@ local M = {}
 
 ---@class AgentdiffOptions
 ---@field keymaps AgentdiffKeymaps|false  mappings to create; false (default) creates none
+---@field attribution string               who changed a file: "writer" (default) or "hooks"
 ---@field poll_interval integer           ms between disk checks while Neovim is focused
 ---@field settle integer                  ms before an unclaimed change is confirmed as the agent's
 ---@field claim_ttl integer               ms a claim stays valid
@@ -38,6 +39,7 @@ local M = {}
 ---@type AgentdiffOptions
 M.defaults = {
   keymaps = false,
+  attribution = "writer",
   poll_interval = 1000,
   settle = 300,
   claim_ttl = 10000,
@@ -105,6 +107,7 @@ function M.resolve(opts)
     o.excludes = vim.deepcopy(opts.excludes)
   end
   vim.validate("keymaps", o.keymaps, { "table", "boolean" })
+  vim.validate("attribution", o.attribution, "string")
   vim.validate("poll_interval", o.poll_interval, "number")
   vim.validate("settle", o.settle, "number")
   vim.validate("claim_ttl", o.claim_ttl, "number")

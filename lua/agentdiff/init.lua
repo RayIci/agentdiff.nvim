@@ -259,6 +259,16 @@ require("agentdiff.ui.panel").set_handlers({
 ---@param opts AgentdiffOptions|table|nil
 function M.setup(opts)
   local o = config.resolve(opts)
+  local attribution = require("agentdiff.attribution")
+  if not attribution.get(o.attribution) then
+    error(
+      ("agentdiff: unknown attribution '%s' (valid: %s)"):format(
+        o.attribution,
+        table.concat(attribution.names(), ", ")
+      ),
+      2
+    )
+  end
   highlights.define()
   vim.api.nvim_clear_autocmds({ group = global_group })
   vim.api.nvim_create_autocmd("ColorScheme", { group = global_group, callback = highlights.define })

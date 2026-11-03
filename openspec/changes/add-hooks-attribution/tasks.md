@@ -4,8 +4,8 @@ Each group ends with `make test`, `make fmt-check` and lua_ls clean, and is comm
 
 ## 1. Journal and option
 
-- [ ] 1.1 Add `core/journal.lua` (add, reported, take, gc, last) with the one-file-per-report layout (D1); verify unit tests for concurrent adds, consumption, the late-duplicate rule and gc
-- [ ] 1.2 Add the `attribution` option validated against the attribution registry, and make `attribution.active(s)` return the configured mode; verify tests for "Default mode" and "Unknown mode", and update the public-surface test
+- [x] 1.1 Add `core/journal.lua` (add, reported, take, gc, last) with the one-file-per-report layout (D1); verify unit tests for concurrent adds, consumption, the late-duplicate rule and gc
+- [x] 1.2 Add the `attribution` option validated against the attribution registry, and make `attribution.active(s)` return the configured mode; verify tests for "Default mode" and "Unknown mode", and update the public-surface test
 
 ## 2. Adapters
 

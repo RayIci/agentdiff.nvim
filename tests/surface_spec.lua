@@ -71,6 +71,7 @@ describe("public surface", function()
     local d = require("agentdiff.config").defaults
     eq(
       {
+        attribution = "writer",
         auto_start = true,
         claim_ttl = 10000,
         confirm = true,
