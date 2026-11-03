@@ -13,8 +13,9 @@ local util = require("agentdiff.core.util")
 
 local uv = vim.uv
 
----Reports older than this are deleted by gc().
-M.report_ttl = 60000
+---Reports older than this are deleted by gc(): a report that never matched a
+---change (the tool call failed) is forgotten after a week.
+M.report_ttl = 7 * 24 * 3600 * 1000
 ---After a path's reports are consumed, reports for it this soon after are
 ---late duplicates (the "post" of an edit whose "pre" was already used).
 M.dup_window = 2000
@@ -81,6 +82,25 @@ local function each(dir, fn)
       end
     end
   end
+end
+
+---Live report times per path, ignoring late duplicates of consumed reports.
+---@param store_dir string
+---@return table<string, integer[]>
+function M.times(store_dir)
+  local dir = M.dir(store_dir)
+  local taken = read_json(dir .. "/taken.json")
+  local res = {}
+  each(dir, function(_, r)
+    for _, p in ipairs(r.paths) do
+      local t = taken[p]
+      if type(p) == "string" and not (t and r.time <= t + M.dup_window) then
+        res[p] = res[p] or {}
+        table.insert(res[p], r.time)
+      end
+    end
+  end)
+  return res
 end
 
 ---Paths with a live report: path → newest report time, ignoring reports

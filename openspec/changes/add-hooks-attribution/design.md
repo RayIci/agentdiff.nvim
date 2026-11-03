@@ -21,25 +21,25 @@ See proposal.md for motivation. The modular layout from the previous change give
 ## Decisions
 
 ### D1. The journal: one file per report in the store
-`<store>/agent/<ms>-<pid>-<n>.json` = `{ "time": ms, "harness": "claude", "phase": "pre"|"post", "paths": ["src/a.lua", …], "session": "…" }` with project-relative paths. One file per report means concurrent hook processes never contend (no locking, no partial appends). `core/journal.lua` owns `add(dir, report)`, `reported(dir, since)` (path → newest report time), `take(dir, paths)` (consume), `gc(dir, ttl)` and `last(dir)` (newest report per harness, for status). Reports older than `report_ttl` (60 s) are deleted by `gc`.
+`<store>/agent/<ms>-<pid>-<n>.json` = `{ "time": ms, "harness": "claude", "phase": "pre"|"post", "paths": ["src/a.lua", …], "session": "…" }` with project-relative paths. One file per report means concurrent hook processes never contend (no locking, no partial appends). `core/journal.lua` owns `add(dir, report)`, `reported(dir, since)` (path → newest report time), `take(dir, paths)` (consume), `gc(dir, ttl)` and `last(dir)` (newest report per harness, for status). `times(dir)` gives every live report time per path. Reports older than `report_ttl` (7 days: a report that never matched a change, because its tool call failed) are deleted by `gc`.
 
 ### D2. The reporter: `bin/agentdiff-hook.lua`, run with `nvim -l`
-Command line: `nvim --headless -u NONE -l <plugin>/bin/agentdiff-hook.lua <harness> <state_dir>`. It prepends `<plugin>/lua` to `package.path`, reads stdin, decodes JSON, asks the named adapter (falling back to every adapter) for a report, and for each path finds the project root (`vim.fs.root(path, ".git")`, else the payload's `cwd`), then the store `<state_dir>/<sha256(root):sub(1,16)>`, exactly as `core/store.open` derives it. It writes a report only when that store exists (a reviewed project). Everything runs inside `pcall`; it prints nothing and calls `os.exit(0)` in all cases. Neovim is the only dependency, so no `jq` or Python is needed; startup without config is ~30–80 ms.
+Command line: `<nvim> --headless -u NONE -i NONE -l <plugin>/bin/agentdiff-hook.lua <harness> <state_dir> <pre|post>`, where `<nvim>` is the absolute path of the Neovim that installed it (`$APPIMAGE` for an AppImage, whose `v:progpath` is a temporary mount). It prepends `<plugin>/lua` to `package.path`, reads stdin, decodes JSON, asks the named adapter (falling back to every adapter) for a report, and for each path walks its ancestor directories: an ancestor whose real path hashes to a store under `<state_dir>` (`<sha256(real):sub(1,16)>`, exactly as `core/store.open` derives it) and whose `root` file names it is a reviewed project, whatever made it the root (git toplevel, forced root, plain directory). It writes one report per such store. Everything runs inside `pcall`; it prints nothing and calls `os.exit(0)` in all cases. Neovim is the only dependency, so no `jq` or Python is needed; startup without config is ~40 ms.
 
 ### D3. Hooks mode: reported → agent, otherwise → user after a short wait
 `attribution/hooks.lua` implements `classify`:
-- forced modes, `s.writing`, unreviewable paths and claims as in `writer`;
-- a path with a report newer than `now - report_window` (10 s) → **agent**, and its reports are consumed (`journal.take`);
-- otherwise the path waits `hook_settle` (1500 ms, the time a `PostToolUse` report needs to arrive when a CLI runs no pre hook), then becomes **user** (folded into the baseline).
+- unreviewable paths, `s.writing`, forced "user" and claims as in `writer`;
+- a path with a live report made within `report_window` (10 s) of the file's modification time (any live report, for a deletion) → **agent**, and its reports are consumed (`journal.take`). Matching against the modification time instead of the poll time means an edit made while Neovim was unfocused or closed is still recognised however late Neovim looks, and a stale report never attributes a later, unrelated change;
+- otherwise, during a normal poll, a change younger than `hook_wait` (1500 ms, the time a "post" report needs to arrive when a CLI runs no pre hook) is looked at again; then it becomes **user** (folded into the baseline). Before a shell command (forced "agent"), unreported changes are the user's at once.
 
-A "post" report arriving after its "pre" report was consumed is dropped by `take`'s rule that a path consumed at `t` ignores reports up to `t + 2 s`, so a late duplicate doesn't attribute the next unrelated change. git-guard and discard detection aren't needed: anything unreported is the user's anyway. Staging-keeps runs in `detect/git` as before.
+A "post" report arriving after its "pre" report was consumed is dropped by `take`'s rule that a path consumed at `t` ignores reports up to `t + 2 s`, so a late duplicate doesn't attribute the next unrelated change. git-guard and discard detection aren't needed: anything unreported is the user's anyway. Staging-keeps runs in `detect/git` as before. `gc` runs at most once a minute from `classify`.
 
 ### D4. Adapters
 `harness/claude.lua` and `harness/copilot.lua` implement the interface. Both parse defensively:
 - tool name from `tool_name` / `toolName`;
 - arguments from `tool_input` / `toolArgs`, decoding a JSON string;
 - path from `file_path`, `path`, `filePath`, `filename`, `notebook_path`, or patch headers (`*** Update File: x`, `*** Add File: x`, `*** Delete File: x`, `+++ b/x`);
-- phase from `hook_event_name` / the event the hook was installed for (passed as a third argument);
+- phase from `hook_event_name` / the event the hook was installed for (the reporter's third argument, passed to `parse` as a hint);
 - relative paths resolved against `cwd`.
 
 Their tool lists differ (Claude: `Edit|Write|MultiEdit|NotebookEdit`; Copilot: `edit|create|str_replace_editor|write|apply_patch`) and so do their install targets.

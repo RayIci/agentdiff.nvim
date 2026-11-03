@@ -62,5 +62,6 @@ function M.reset()
 end
 
 M.register(require("agentdiff.attribution.writer"))
+M.register(require("agentdiff.attribution.hooks"))
 
 return M

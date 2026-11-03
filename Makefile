@@ -9,11 +9,11 @@ test:
 
 ## fmt: format the Lua sources
 fmt:
-	$(STYLUA) lua tests
+	$(STYLUA) lua tests bin
 
 ## fmt-check: check formatting without changing files
 fmt-check:
-	$(STYLUA) --check lua tests
+	$(STYLUA) --check lua tests bin
 
 ## helptags: build doc/tags for :help agentdiff
 helptags:

@@ -14,8 +14,8 @@ Each group ends with `make test`, `make fmt-check` and lua_ls clean, and is comm
 
 ## 3. Reporter and hooks mode
 
-- [ ] 3.1 Add `bin/agentdiff-hook.lua` (D2); verify tests that run it as a real `nvim -l` process: a report lands in the right project's store, "Not a file edit" (exit 0, no output, nothing recorded), a file outside reviewed projects records nothing
-- [ ] 3.2 Add `attribution/hooks.lua` (D3); verify tests for "Reported agent edit", "Generated file", "Agent shell edit", "A report covers one change" and "Neovim closed"
+- [x] 3.1 Add `bin/agentdiff-hook.lua` (D2); verify tests that run it as a real `nvim -l` process: a report lands in the right project's store, "Not a file edit" (exit 0, no output, nothing recorded), a file outside reviewed projects records nothing
+- [x] 3.2 Add `attribution/hooks.lua` (D3); verify tests for "Reported agent edit", "Generated file", "Agent shell edit", "A report covers one change" and "Neovim closed"
 
 ## 4. Installing
 
