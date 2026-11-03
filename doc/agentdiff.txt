@@ -175,6 +175,8 @@ Views~
     overlay                     hide / show the overlay
     resolve                     resolve a conflicted file
     refresh                     check the disk now
+    reset                       forget the current project's pending
+                                changes, start over from its files
     toggle / enable / disable   turn review on / off (persisted)
     status                      show the pending summary
 
@@ -223,6 +225,11 @@ resolve({choice})                                    *agentdiff.resolve()*
 
 panel() / toggle_view() / toggle_overlay()
     Views, see |agentdiff-panel| and |agentdiff-reviewing|.
+
+reset({opts})                                          *agentdiff.reset()*
+    Forget every pending change of the current project and start over from
+    its current files. Other projects are untouched. Asks first unless
+    `{ force = true }` or `confirm = false`.
 
 claim({paths})                                         *agentdiff.claim()*
     The next disk changes to these paths (absolute or project-relative) are
@@ -344,7 +351,10 @@ are always baseline → current content.
   discard) only move a file toward its committed content: they are yours. An
   agent edit moves away from HEAD, so it stays pending.
 - Staging keeps: staging a pending change (file or hunk) keeps it, as in VS
-  Code, so a commit keeps what it stages. See `keep_on_stage`.
+  Code, so a commit keeps what it stages. The same check runs when review
+  starts, so changes committed while Neovim was closed are kept too; a
+  deletion counts once the file is gone from the index and was tracked
+  before. See `keep_on_stage`.
 
 A newly seen, unclaimed change waits `settle` ms before it is confirmed as the
 agent's, so claims from other instances can arrive first.
@@ -358,7 +368,8 @@ committed to), `baseline.idx`, `observed.idx`, a `claims/` journal and a lock.
 Every Neovim instance on the project shares it, and it survives restarts, so
 pending changes are still there after |:restart| or a crash.
 
-Deleting the store is always safe: agentdiff rebuilds it from the files on
+`:Agentdiff reset` (or |agentdiff.reset()|) forgets the current project's
+pending changes. Deleting the store is always safe: agentdiff rebuilds it from the files on
 disk, with nothing pending.
 
 ==============================================================================

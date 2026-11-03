@@ -94,6 +94,7 @@ function M.start()
     vim.schedule(function()
       if session.get() == s then
         review.refresh(s)
+        detect.reconcile(s)
         detect.poll()
       end
     end)
@@ -161,6 +162,27 @@ function M.disable()
   write_state(false)
   M.stop()
   util.notify("agentdiff: off")
+end
+
+---Forget every pending change of the current project and start over from
+---its current files (other projects are untouched). Asks first unless
+---`opts.force` or `confirm = false`.
+---@param opts { force: boolean? }?
+function M.reset(opts)
+  local s = session.get()
+  if not s then
+    return util.notify("agentdiff: not active")
+  end
+  local force = (opts and opts.force) or not s.opts.confirm
+  local question = ("Forget all pending changes of %s and start over from its current files?"):format(s.root)
+  if not force and vim.fn.confirm(question, "&Yes\n&No", 2) ~= 1 then
+    return
+  end
+  local store, root = s.store, s.root
+  M.stop()
+  store_mod.destroy(store)
+  M.start()
+  util.notify("agentdiff: reset " .. root)
 end
 
 ---Toggle review on/off (persisted).
@@ -386,6 +408,9 @@ M.subcommands = {
   end,
   toggle = function()
     M.toggle()
+  end,
+  reset = function()
+    M.reset()
   end,
   status = function()
     if not M.enabled() then

@@ -79,15 +79,28 @@ local function keep_staged(s)
       paths[#paths + 1] = p
     end
   end
-  if #paths == 0 then
+  if #paths == 0 or not project_gitdir(s) then
     return false
   end
-  return review.keep_staged(
-    s,
-    paths,
-    store_mod.index_contents(s.root, paths),
-    store_mod.head_contents(s.root, paths)
-  )
+  local staged = store_mod.index_contents(s.root, paths)
+  local head = store_mod.head_contents(s.root, paths)
+  local gone = {}
+  for _, p in ipairs(paths) do
+    if not staged[p] and not head[p] and not uv.fs_stat(session.abs(s, p)) then
+      gone[#gone + 1] = p
+    end
+  end
+  return review.keep_staged(s, paths, staged, head, store_mod.ever_tracked(s.root, gone))
+end
+
+---Apply staging-keeps to what is already pending when review starts:
+---changes committed while Neovim was closed (or by an older version) must
+---not stay pending forever.
+---@param s AgentdiffSession
+function M.reconcile(s)
+  if s.opts.keep_on_stage and keep_staged(s) then
+    review.refresh(s)
+  end
 end
 
 ---@param out string?

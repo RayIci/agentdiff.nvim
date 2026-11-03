@@ -146,7 +146,8 @@ flowchart TB
     big -- yes --> notice["notice, not reviewed"]
     big -- no --> active
     ready -- yes --> clean["drop .git/ and ignored entries"]
-    clean --> active(["active: first refresh, then poll"])
+    clean --> rec["keep pending changes already staged or committed<br/>(staging-keeps, once)"]
+    rec --> active(["active: first refresh, then poll"])
 ```
 
 Because B and O persist, an agent that worked while Neovim was closed is

@@ -305,8 +305,9 @@ end
 ---@param paths string[]           pending project-relative paths
 ---@param staged table<string, string|false>  index content per path
 ---@param head table<string, string|false>    HEAD content per path (for staged deletions)
+---@param ever table<string, boolean>           paths with git history (for committed deletions)
 ---@return boolean changed
-function M.keep_staged(s, paths, staged, head)
+function M.keep_staged(s, paths, staged, head, ever)
   local changed = false
   local B = s.store:read("baseline", paths)
   for _, p in ipairs(paths) do
@@ -315,8 +316,9 @@ function M.keep_staged(s, paths, staged, head)
     local D = util.read_file(session.abs(s, p))
     local nb = b
     if D == nil then
-      -- a deletion is staged when the index no longer has a file HEAD had
-      if I == nil and head[p] then
+      -- a deletion is staged (or committed) when the index no longer has a
+      -- file that HEAD has, or that was tracked at some point
+      if I == nil and (head[p] or ever[p]) then
         nb = nil
       end
     elseif I ~= nil then

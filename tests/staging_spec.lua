@@ -168,3 +168,139 @@ describe("keep and undo end a conflict", function()
     eq(0, stale(buf))
   end)
 end)
+
+describe("stale pending changes", function()
+  local function restart()
+    local agentdiff = require("agentdiff")
+    agentdiff.stop()
+    agentdiff.start()
+    assert(agentdiff._test.wait_ready(5000))
+    return agentdiff
+  end
+
+  before_each(function()
+    H.write("t.lua", "a\nb\n")
+    H.write("gone.lua", "g\n")
+    H.git_repo()
+  end)
+
+  it("keeps changes committed while review wasn't running (Committed before review started)", function()
+    local agentdiff = H.start()
+    H.write("t.lua", "a\nagent\n")
+    H.poll()
+    eq({ "modified t.lua +1 -1 #1" }, H.pending())
+    agentdiff.stop()
+    H.git({ "commit", "-q", "-am", "committed while Neovim was closed" })
+    restart()
+    eq({}, H.pending())
+  end)
+
+  it("keeps a committed deletion of a tracked file (Committed deletion)", function()
+    local agentdiff = H.start()
+    H.remove("gone.lua")
+    H.poll()
+    eq({ "deleted gone.lua +0 -1 #1" }, H.pending())
+    agentdiff.stop()
+    H.git({ "rm", "-q", "--cached", "gone.lua" })
+    H.git({ "commit", "-q", "-m", "delete gone.lua" })
+    restart()
+    eq({}, H.pending())
+  end)
+
+  it("keeps a deletion committed while running", function()
+    H.start()
+    H.remove("gone.lua")
+    H.poll()
+    H.git({ "rm", "-q", "--cached", "gone.lua" })
+    H.git({ "commit", "-q", "-m", "delete gone.lua" })
+    H.poll()
+    eq({}, H.pending())
+  end)
+
+  it("leaves the deletion of a never-tracked file pending", function()
+    H.write("scratch.txt", "untracked\n")
+    local agentdiff = H.start()
+    H.remove("scratch.txt")
+    H.poll()
+    eq({ "deleted scratch.txt +0 -1 #1" }, H.pending())
+    H.git({ "commit", "-q", "--allow-empty", "-m", "unrelated" })
+    agentdiff = restart()
+    eq({ "deleted scratch.txt +0 -1 #1" }, H.pending())
+    local _ = agentdiff
+  end)
+
+  it("leaves uncommitted, unstaged agent changes pending at startup", function()
+    H.start()
+    H.write("t.lua", "a\nagent\n")
+    H.poll()
+    restart()
+    eq({ "modified t.lua +1 -1 #1" }, H.pending())
+  end)
+end)
+
+describe("reset", function()
+  it("forgets the current project's pending changes (Reset the current project)", function()
+    H.write("r.lua", "base\n")
+    local agentdiff = H.start()
+    H.write("r.lua", "agent\n")
+    H.poll()
+    eq({ "modified r.lua +1 -1 #1" }, H.pending())
+    agentdiff.reset({ force = true })
+    ok(agentdiff._test.wait_ready(5000), "review continues")
+    eq({}, H.pending())
+    H.write("r.lua", "agent again\n")
+    H.poll()
+    eq({ "modified r.lua +1 -1 #1" }, H.pending(), "later agent changes show as usual")
+  end)
+
+  it("asks first", function()
+    H.write("r.lua", "base\n")
+    local agentdiff = H.start()
+    H.write("r.lua", "agent\n")
+    H.poll()
+    local orig = vim.fn.confirm
+    ---@diagnostic disable-next-line: duplicate-set-field
+    vim.fn.confirm = function()
+      return 2
+    end
+    vim.cmd("Agentdiff reset")
+    vim.fn.confirm = orig
+    eq({ "modified r.lua +1 -1 #1" }, H.pending(), "declining keeps everything")
+  end)
+
+  it("leaves other projects alone (Other projects untouched)", function()
+    local other = H.state .. "/other-project"
+    vim.fn.mkdir(other, "p")
+    H.write_abs(other .. "/o.lua", "o\n")
+    H.write("a.lua", "a\n")
+    local agentdiff = H.start()
+    H.write("a.lua", "agent a\n")
+    H.poll()
+    eq({ "modified a.lua +1 -1 #1" }, H.pending())
+    -- switch to the other project, give it a pending change, reset it
+    agentdiff.setup({
+      root = other,
+      state_dir = H.state .. "/agentdiff",
+      poll_interval = 0,
+      auto_start = false,
+    })
+    agentdiff.start()
+    assert(agentdiff._test.wait_ready(5000))
+    H.write_abs(other .. "/o.lua", "agent o\n")
+    H.poll()
+    eq({ "modified o.lua +1 -1 #1" }, H.pending())
+    agentdiff.reset({ force = true })
+    assert(agentdiff._test.wait_ready(5000))
+    eq({}, H.pending())
+    -- back to the first project: its pending change is still there
+    agentdiff.setup({
+      root = H.project,
+      state_dir = H.state .. "/agentdiff",
+      poll_interval = 0,
+      auto_start = false,
+    })
+    agentdiff.start()
+    assert(agentdiff._test.wait_ready(5000))
+    eq({ "modified a.lua +1 -1 #1" }, H.pending())
+  end)
+end)

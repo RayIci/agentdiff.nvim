@@ -493,6 +493,24 @@ function M.index_contents(root, paths)
   return project_contents(root, paths, ":")
 end
 
+---Paths that appear anywhere in the project's history (read-only): tells a
+---committed deletion of a tracked file from a deleted file git never had.
+---@param root string
+---@param paths string[]
+---@return table<string, boolean>
+function M.ever_tracked(root, paths)
+  local res = {}
+  if #paths == 0 then
+    return res
+  end
+  local args = { "log", "--format=", "--name-only", "--no-renames", "--" }
+  vim.list_extend(args, paths)
+  for name in (M.project_git(root, args).stdout or ""):gmatch("[^\n]+") do
+    res[name] = true
+  end
+  return res
+end
+
 ---Delete the store directory (it's rebuilt from disk on the next start).
 ---@param store AgentdiffStore
 function M.destroy(store)

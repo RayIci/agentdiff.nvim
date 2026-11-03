@@ -258,7 +258,7 @@ file are staged moves the file toward the index, not HEAD, and is shown.
 ### Staging keeps (like VS Code)
 
 VS Code keeps a pending edit as soon as you stage it. agentdiff does the same:
-whenever the project's `.git/index` changes, each pending file's staged
+once when review starts and whenever the project's `.git/index` changes, each pending file's staged
 content is read (read-only) and every pending hunk that is fully staged moves
 into the baseline.
 
@@ -272,6 +272,9 @@ flowchart LR
 
 - Staging a single hunk in lazygit keeps just that hunk; `git commit -a`
   stages everything, so it keeps everything it commits.
+- Committed deletions count too: a pending deletion is kept once the file is
+  gone from the index and was tracked at some point (`git log -- path`). A
+  deleted file git never had stays pending.
 - It only ever keeps: unstaging, or staging your own saved work, never makes
   anything pending.
 - agentdiff can't tell who ran `git add`: if the agent stages its own edits,

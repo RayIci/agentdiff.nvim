@@ -102,6 +102,7 @@ Every action is a function on `require("agentdiff")`:
 | `toggle_view()` | toggle inline overlay ↔ side-by-side diff for the current file |
 | `toggle_overlay()` | hide / show the overlay; nothing is kept or undone |
 | `claim(paths)` | the next disk changes to these paths are yours (for tools that write files) |
+| `reset(opts)` | forget every pending change of the current project and start over from its current files; asks first unless `{ force = true }` |
 | `status()` | statusline summary, e.g. `3 files · 7 changes`; `""` when nothing is pending |
 | `files()` | pending files in navigation order |
 | `path_status(path)` | `"file"` (has pending changes), `"dir"` (contains such a file) or `nil`: cheap enough for every line of a file tree |
@@ -138,6 +139,7 @@ undoing a deletion restores the file.
 | `resolve` | resolve a conflicted file |
 | `refresh` | check the disk now |
 | `toggle` / `enable` / `disable` | turn review on / off (persisted) |
+| `reset` | forget the current project's pending changes and start over from its files (asks first) |
 | `status` | show the pending summary |
 
 Panel keys: `<CR>`/`o` open at the first change · `K`/`U` keep/undo the file ·
@@ -184,7 +186,9 @@ changes are always *baseline → current content*.
   pending until you keep it.
 - **Staging keeps** (as in VS Code): when you stage a pending change, in
   lazygit, `git add`, or `git commit -a`, it is kept, file or single hunk.
-  Unstaging never makes anything pending again. Turn it off with
+  The same check runs when review starts, so changes committed while Neovim
+  was closed are kept too, deletions included. Unstaging never makes
+  anything pending again. Turn it off with
   `keep_on_stage = false`.
 - Files inside `.git` (commit messages, rebase todos) and ignored files are
   never reviewed, whoever writes them.
@@ -212,7 +216,8 @@ and by the `excludes` option are never reviewed.
 The on/off state lives in `stdpath("state")/agentdiff/enabled`, shared by all
 projects.
 
-**Resetting is always safe:** delete the store directory (or a project's
+**Resetting is always safe:** `:Agentdiff reset` does it for the current
+project. By hand: delete the store directory (or a project's
 subdirectory) and agentdiff rebuilds it from the files currently on disk,
 with nothing pending.
 
