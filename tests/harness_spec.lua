@@ -13,7 +13,7 @@ describe("harness registry", function()
         return true
       end,
       status = function()
-        return { installed = false }
+        return { installed = false, where = {} }
       end,
     }
     harness.register(fake)
@@ -21,6 +21,8 @@ describe("harness registry", function()
     ok(vim.tbl_contains(harness.names(), "fake"))
     eq({ phase = "post", paths = { "/p/x.lua" } }, harness.get("fake").parse({ file = "/p/x.lua" }))
     eq(nil, harness.get("nope"))
+    harness.unregister("fake")
+    eq(nil, harness.get("fake"))
   end)
 end)
 

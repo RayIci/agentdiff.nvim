@@ -106,6 +106,8 @@ Every action is a function on `require("agentdiff")`:
 | `status()` | statusline summary, e.g. `3 files · 7 changes`; `""` when nothing is pending |
 | `files()` | pending files in navigation order |
 | `path_status(path)` | `"file"` (has pending changes), `"dir"` (contains such a file) or `nil`: cheap enough for every line of a file tree |
+| `hooks_install(harness, scope)` / `hooks_uninstall(harness, scope)` | add / remove agentdiff's hook in an agent CLI: `harness` `"claude"`, `"copilot"` or `"all"` (default), `scope` `"user"` (default) or `"project"` (see [Attribution](#attribution)) |
+| `hooks_status(opts)` | per harness: where the hook is installed and when it last reported an edit for this project; shown unless `{ silent = true }` |
 
 `keep(opts)` and `undo(opts)` take:
 
@@ -141,6 +143,7 @@ undoing a deletion restores the file.
 | `toggle` / `enable` / `disable` | turn review on / off (persisted) |
 | `reset` | forget the current project's pending changes and start over from its files (asks first) |
 | `status` | show the pending summary |
+| `hooks` | `hooks install\|uninstall\|status [claude\|copilot\|all] [user\|project]`: manage agentdiff's hook in agent CLIs (default: `status`) |
 
 Panel keys: `<CR>`/`o` open at the first change · `K`/`U` keep/undo the file ·
 `gK`/`gU` keep/undo all · `R` refresh · `q` close.

@@ -45,7 +45,7 @@ A "post" report arriving after its "pre" report was consumed is dropped by `take
 Their tool lists differ (Claude: `Edit|Write|MultiEdit|NotebookEdit`; Copilot: `edit|create|str_replace_editor|write|apply_patch`) and so do their install targets.
 
 ### D5. Installing: merge, mark, back up
-`harness/settings.lua` reads a JSON file (missing → `{}`), lets the adapter add or remove its entries, and writes it back with `vim.json.encode(…, { indent = "  ", sort_keys = true })` after copying the original to `<file>.agentdiff.bak` (only once). agentdiff's entries are recognised by the marker `agentdiff-hook.lua` in the command, which makes install idempotent and uninstall precise.
+`harness/settings.lua` reads a JSON file (missing → `{}`; invalid JSON → refuse and leave the file alone), lets the adapter add or remove its entries, and writes it back with `vim.json.encode(…, { indent = "  ", sort_keys = true })` after copying the original to `<file>.agentdiff.bak` (only once). Nothing is written when the data didn't change, so install twice and uninstalling what isn't there touch nothing. agentdiff's entries are recognised by the marker `agentdiff-hook.lua` in the command, which makes install idempotent and uninstall precise. Claude's settings are shared with the user's own, so only agentdiff's entries are added or removed; Copilot's hook file is agentdiff's own (`agentdiff.json`), written whole on install and deleted on uninstall.
 
 | Harness | user scope | project scope | Entries |
 |---|---|---|---|

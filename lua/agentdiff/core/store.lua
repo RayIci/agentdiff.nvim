@@ -75,6 +75,14 @@ local git_flags = {
   "gc.auto=0",
 }
 
+---Store directory of a project root (bin/agentdiff-hook.lua derives it the
+---same way).
+---@param root string  real path
+---@return string
+function M.dir_of(root)
+  return require("agentdiff.config").state_dir() .. "/" .. vim.fn.sha256(root):sub(1, 16)
+end
+
 ---@param root string
 ---@param opts AgentdiffOptions
 ---@return AgentdiffStore
@@ -82,7 +90,7 @@ function M.open(root, opts)
   local self = setmetatable({}, Store)
   self.root = root
   self.opts = opts
-  self.dir = require("agentdiff.config").state_dir() .. "/" .. vim.fn.sha256(root):sub(1, 16)
+  self.dir = M.dir_of(root)
   self.gitdir = self.dir .. "/git"
   self:_init()
   return self

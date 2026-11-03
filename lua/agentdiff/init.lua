@@ -7,6 +7,7 @@
 local M = {}
 
 local claim_mod = require("agentdiff.actions.claim")
+local hooks_mod = require("agentdiff.actions.hooks")
 local command = require("agentdiff.command")
 local keymaps = require("agentdiff.keymaps")
 local navigate = require("agentdiff.actions.navigate")
@@ -225,9 +226,36 @@ M.path_status = status.path_status
 ---Pending files in navigation order (read-only copies).
 M.files = status.files
 
+-- Agent hooks -----------------------------------------------------------------
+
+---Install agentdiff's hook into an agent CLI: harness "claude", "copilot" or
+---"all" (default), scope "user" (default) or "project".
+---@param harness? string
+---@param scope? "user"|"project"
+---@return boolean ok
+function M.hooks_install(harness, scope)
+  return hooks_mod.install(harness, scope)
+end
+
+---Remove agentdiff's hook; same arguments as hooks_install().
+---@param harness? string
+---@param scope? "user"|"project"
+---@return boolean ok
+function M.hooks_uninstall(harness, scope)
+  return hooks_mod.uninstall(harness, scope)
+end
+
+---Per harness: where agentdiff's hook is installed and when it last reported
+---an edit for the current project. Shows it unless `opts.silent`.
+---@param opts? { silent: boolean? }
+---@return table<string, AgentdiffHookStatus>
+function M.hooks_status(opts)
+  return hooks_mod.status(opts)
+end
+
 -- Command ---------------------------------------------------------------------
 
----@type table<string, fun(range: integer[]?)>
+---@type table<string, fun(range: integer[]?, args: string[])>
 M.subcommands = command.subcommands(M)
 
 require("agentdiff.ui.panel").set_handlers({

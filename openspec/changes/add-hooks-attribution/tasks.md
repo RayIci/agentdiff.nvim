@@ -19,8 +19,8 @@ Each group ends with `make test`, `make fmt-check` and lua_ls clean, and is comm
 
 ## 4. Installing
 
-- [ ] 4.1 Add `harness/settings.lua` and the adapters' install, uninstall and status (D5); verify tests for "Install into existing settings", "Install twice" and "Uninstall" for both harnesses at both scopes, in temp directories
-- [ ] 4.2 Add `actions/hooks.lua`, the public functions and `:Agentdiff hooks …` with completion (D6); verify tests for "Status after an edit", the subcommand completion and the public-surface test
+- [x] 4.1 Add `harness/settings.lua` and the adapters' install, uninstall and status (D5); verify tests for "Install into existing settings", "Install twice" and "Uninstall" for both harnesses at both scopes, in temp directories
+- [x] 4.2 Add `actions/hooks.lua`, the public functions and `:Agentdiff hooks …` with completion (D6); verify tests for "Status after an edit", the subcommand completion and the public-surface test
 
 ## 5. Docs and end-to-end
 

@@ -15,6 +15,9 @@ describe("public surface", function()
       "enable",
       "enabled",
       "files",
+      "hooks_install",
+      "hooks_status",
+      "hooks_uninstall",
       "keep",
       "keep_all",
       "keep_file",
@@ -46,6 +49,7 @@ describe("public surface", function()
     eq({
       "disable",
       "enable",
+      "hooks",
       "keep",
       "keep_all",
       "keep_file",

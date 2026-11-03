@@ -16,14 +16,21 @@ local M = {}
 
 ---@class AgentdiffHarnessStatus
 ---@field installed boolean
----@field where? string    the configuration file holding the hook
+---@field where string[]   the configuration files holding the hook
+
+---Where to install: the user's home (user scope), the project root (project
+---scope), and the state directory baked into the hook command.
+---@class AgentdiffHarnessOpts
+---@field home string
+---@field root string
+---@field state_dir string
 
 ---@class AgentdiffHarness
 ---@field name string
 ---@field parse fun(payload: table, hint?: string): AgentdiffHarnessReport?  nil when the payload is not a file edit
----@field install fun(scope: "user"|"project", opts: table): boolean, string?
----@field uninstall fun(scope: "user"|"project", opts: table): boolean, string?
----@field status fun(opts: table): AgentdiffHarnessStatus
+---@field install fun(scope: "user"|"project", opts: AgentdiffHarnessOpts): boolean, string  ok, message
+---@field uninstall fun(scope: "user"|"project", opts: AgentdiffHarnessOpts): boolean, string
+---@field status fun(opts: AgentdiffHarnessOpts): AgentdiffHarnessStatus
 
 ---@type table<string, AgentdiffHarness>
 local adapters = {}
@@ -31,6 +38,11 @@ local adapters = {}
 ---@param adapter AgentdiffHarness
 function M.register(adapter)
   adapters[adapter.name] = adapter
+end
+
+---@param name string
+function M.unregister(name)
+  adapters[name] = nil
 end
 
 ---@param name string
