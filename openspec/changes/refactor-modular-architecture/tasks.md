@@ -21,8 +21,8 @@ Each group ends with `make test`, `make fmt-check` and lua_ls clean, and is comm
 
 ## 4. editor/ and actions/
 
-- [ ] 4.1 Move `buffers.lua` to `editor/buffers.lua`; verify the suite passes
-- [ ] 4.2 Split `actions.lua` into `actions/navigate.lua`, `actions/review.lua` and `actions/resolve.lua`; move on/off + epoch to `actions/onoff.lua` and reset to `actions/reset.lua`; verify the suite passes
+- [x] 4.1 Move `buffers.lua` to `editor/buffers.lua`; verify the suite passes
+- [x] 4.2 Split `actions.lua` into `actions/navigate.lua`, `actions/review.lua` and `actions/resolve.lua`; move on/off + epoch to `actions/onoff.lua` and reset to `actions/reset.lua`; verify the suite passes
 
 ## 5. ui/
 

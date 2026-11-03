@@ -6,8 +6,12 @@
 ---@class Agentdiff
 local M = {}
 
-local actions = require("agentdiff.actions")
-local buffers = require("agentdiff.buffers")
+local navigate = require("agentdiff.actions.navigate")
+local onoff = require("agentdiff.actions.onoff")
+local reset_mod = require("agentdiff.actions.reset")
+local resolve_mod = require("agentdiff.actions.resolve")
+local review_actions = require("agentdiff.actions.review")
+local buffers = require("agentdiff.editor.buffers")
 local claims = require("agentdiff.core.claims")
 local config = require("agentdiff.config")
 local detect = require("agentdiff.detect.poller")
@@ -20,48 +24,23 @@ local util = require("agentdiff.core.util")
 
 local global_group = vim.api.nvim_create_augroup("agentdiff_global", { clear = true })
 
--- On/off state ------------------------------------------------------------------
---
--- One global file, `<state_dir>/enabled`: "on <epoch>" or "off <epoch>". The
--- epoch changes every time review is turned on; each store remembers the epoch
--- it was built in, and a store from before a disabled period is rebuilt from
--- the disk, so nothing that changed while review was off shows as pending.
-
----@return string
-local function state_file()
-  return config.state_dir() .. "/enabled"
-end
-
----@return boolean enabled
----@return string? epoch
-local function read_state()
-  local t = util.read_file(state_file())
-  if not t then
-    return true, nil
-  end
-  local word, epoch = t:match("^(%a+)%s*(%d*)")
-  return word ~= "off", (epoch ~= "" and epoch or nil)
-end
-
----@param on boolean
-local function write_state(on)
-  local _, epoch = read_state()
-  if on then
-    epoch = tostring(util.now_ms())
-  end
-  util.write_file(state_file(), ("%s %s\n"):format(on and "on" or "off", epoch or ""))
-end
+---@type AgentdiffLifecycle
+local lifecycle = {
+  start = function()
+    M.start()
+  end,
+  stop = function()
+    M.stop()
+  end,
+}
 
 ---True when review is on (persisted across restarts).
----@return boolean
-function M.enabled()
-  return (read_state())
-end
+M.enabled = onoff.enabled
 
 ---Start reviewing the project of the current directory (or `opts.root`).
 function M.start()
   M.stop()
-  local enabled, epoch = read_state()
+  local enabled, epoch = onoff.read()
   if not enabled then
     return
   end
@@ -78,15 +57,7 @@ function M.start()
     util.notify(tostring(store), vim.log.levels.ERROR)
     return
   end
-  if epoch then
-    local stored = vim.trim(util.read_file(store.dir .. "/epoch") or "")
-    if stored ~= epoch then
-      -- Built before review was last turned off: start over from the disk.
-      store_mod.destroy(store)
-      store = store_mod.open(root, opts)
-      util.write_file(store.dir .. "/epoch", epoch .. "\n")
-    end
-  end
+  store = onoff.fresh_store(store, root, opts, epoch)
   local s = session.new(root, store, opts)
   buffers.attach(s)
   render.attach(s)
@@ -154,16 +125,17 @@ end
 
 ---Turn review on (persisted).
 function M.enable()
-  write_state(true)
-  M.start()
-  util.notify("agentdiff: on")
+  onoff.enable(lifecycle)
 end
 
 ---Turn review off (persisted): nothing is detected or shown until enabled.
 function M.disable()
-  write_state(false)
-  M.stop()
-  util.notify("agentdiff: off")
+  onoff.disable(lifecycle)
+end
+
+---Toggle review on/off (persisted).
+function M.toggle()
+  onoff.toggle(lifecycle)
 end
 
 ---Forget every pending change of the current project and start over from
@@ -171,69 +143,47 @@ end
 ---`opts.force` or `confirm = false`.
 ---@param opts { force: boolean? }?
 function M.reset(opts)
-  local s = session.get()
-  if not s then
-    return util.notify("agentdiff: not active")
-  end
-  local force = (opts and opts.force) or not s.opts.confirm
-  local question = ("Forget all pending changes of %s and start over from its current files?"):format(s.root)
-  if not force and vim.fn.confirm(question, "&Yes\n&No", 2) ~= 1 then
-    return
-  end
-  local store, root = s.store, s.root
-  M.stop()
-  store_mod.destroy(store)
-  M.start()
-  util.notify("agentdiff: reset " .. root)
-end
-
----Toggle review on/off (persisted).
-function M.toggle()
-  if M.enabled() then
-    M.disable()
-  else
-    M.enable()
-  end
+  reset_mod.reset(opts, lifecycle)
 end
 
 -- Navigation ------------------------------------------------------------------
 
-M.next = actions.next
-M.prev = actions.prev
-M.next_file = actions.next_file
-M.prev_file = actions.prev_file
-M.open = actions.open
+M.next = navigate.next
+M.prev = navigate.prev
+M.next_file = navigate.next_file
+M.prev_file = navigate.prev_file
+M.open = navigate.open
 
 -- Keep / undo -----------------------------------------------------------------
 
 ---Keep pending changes. `opts.scope`: "hunk" (default, the change under the
 ---cursor, or the lines of `opts.range`), "file" or "all".
-M.keep = actions.keep
+M.keep = review_actions.keep
 
 ---Undo pending changes; same options as keep().
-M.undo = actions.undo
+M.undo = review_actions.undo
 
 function M.keep_file()
-  actions.keep({ scope = "file" })
+  review_actions.keep({ scope = "file" })
 end
 
 function M.undo_file()
-  actions.undo({ scope = "file" })
+  review_actions.undo({ scope = "file" })
 end
 
 ---@param opts { force: boolean? }?
 function M.keep_all(opts)
-  actions.keep({ scope = "all", force = opts and opts.force })
+  review_actions.keep({ scope = "all", force = opts and opts.force })
 end
 
 ---@param opts { force: boolean? }?
 function M.undo_all(opts)
-  actions.undo({ scope = "all", force = opts and opts.force })
+  review_actions.undo({ scope = "all", force = opts and opts.force })
 end
 
 ---Resolve a conflicted file: "accept" (the agent's changes, your other unsaved
 ---edits on top), "agent", "mine" or "compare" (asks when nil).
-M.resolve = actions.resolve
+M.resolve = resolve_mod.resolve
 
 -- Views -----------------------------------------------------------------------
 
