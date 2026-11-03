@@ -7,8 +7,11 @@ changes inline as a pending diff, which you can step through and **keep** or
 **undo** per change, per file or all at once. Edits you make in Neovim are
 never part of the review.
 
-No agent needs any configuration: a change on disk that Neovim did not make is
-the agent's.
+No agent needs any configuration: by default a change on disk that Neovim did
+not make is the agent's. If code generators, build scripts or file explorers
+also write into your projects, switch to the **hooks** mode, where only the
+edits Claude Code or Copilot CLI report through their hooks are reviewed (see
+[Attribution](#attribution)).
 
 ## Documentation
 
@@ -67,6 +70,7 @@ require("agentdiff").setup({
 
 | Option | Default | Meaning |
 |---|---|---|
+| `attribution` | `"writer"` | who changed a file: `"writer"` (anything Neovim didn't write is the agent's) or `"hooks"` (only what an agent hook reported); see [Attribution](#attribution) |
 | `keymaps` | `false` | table of `action = lhs` (`next`, `prev`, `next_file`, `prev_file`, `keep`, `undo`, `keep_file`, `undo_file`, `keep_all`, `undo_all`, `panel`, `view`, `overlay`, `resolve`); `keep`/`undo` are also mapped in visual mode |
 | `poll_interval` | `1000` | ms between disk checks while Neovim is focused (`0` disables the timer) |
 | `settle` | `300` | ms an unclaimed change waits before it's confirmed as the agent's |
@@ -198,6 +202,9 @@ Writing your own: see [docs/extending.md](docs/extending.md).
 Every file has a **baseline**: the last version you agreed with. Pending
 changes are always *baseline → current content*.
 
+This is the default **writer** mode; the [hooks mode](#attribution) replaces
+the first rule and the git rules with "an agent hook reported the file".
+
 - A change on disk that Neovim did not make is the **agent's**: the baseline
   stays, so the change becomes pending.
 - Anything Neovim does is **yours**: typing, `:w`, format-on-save, LSP edits,
@@ -218,6 +225,60 @@ changes are always *baseline → current content*.
   `keep_on_stage = false`.
 - Files inside `.git` (commit messages, rebase todos) and ignored files are
   never reviewed, whoever writes them.
+
+## Attribution
+
+`attribution` chooses how a change on disk gets its author, for every project:
+
+| Mode | A change Neovim didn't make is the agent's when… | Setup |
+|---|---|---|
+| `"writer"` (default) | always (unless git produced it or it's a discard, above) | none; works with any agent |
+| `"hooks"` | an agent hook reported that file around the time it changed | `:Agentdiff hooks install` once |
+
+In the hooks mode, everything else that writes into the project (generators,
+build output, files created in a terminal or by a file explorer) is folded into
+the baseline silently. Neovim's own writes, claims, staging-keeps and conflicts
+work exactly as in the writer mode.
+
+```lua
+require("agentdiff").setup({ attribution = "hooks" })
+```
+
+```vim
+:Agentdiff hooks install            " Claude Code and Copilot CLI, user scope
+:Agentdiff hooks install claude project
+:Agentdiff hooks status             " where it's installed, last report for this project
+:Agentdiff hooks uninstall
+```
+
+| Harness | user scope | project scope | Tools reported |
+|---|---|---|---|
+| `claude` (Claude Code) | `~/.claude/settings.json` | `.claude/settings.local.json` | `Edit`, `Write`, `MultiEdit`, `NotebookEdit` |
+| `copilot` (Copilot CLI) | `~/.copilot/hooks/agentdiff.json` | `.github/hooks/agentdiff.json` | `edit`, `create`, `str_replace_editor`, `write`, `apply_patch` |
+
+- **Install merges.** Your other settings and hooks are kept, the original
+  file is backed up once to `<file>.agentdiff.bak`, and installing twice
+  changes nothing. Uninstall removes only agentdiff's entries (Copilot's hook
+  file is agentdiff's own and is deleted).
+- **The hook** runs `bin/agentdiff-hook.lua` with this Neovim
+  (`nvim --headless -u NONE -i NONE -l …`, about 40 ms, no other dependency).
+  It records the edited files in the project's store, prints nothing and
+  always exits 0, so it can never block or fail the agent's tool call.
+  Neovim doesn't need to be running: edits made while it's closed are
+  reviewed when you open the project.
+- **The store location is baked into the hook command**, so the agent and
+  Neovim always agree on it even if they see a different `XDG_STATE_HOME`.
+  Run `:Agentdiff hooks install` again after changing `state_dir` or moving
+  the plugin.
+- **The agent can run anywhere** that sees the same files and the same
+  Neovim path: another tmux pane, another terminal, in the background.
+- **Shell edits aren't reviewed.** A file the agent changes by running a
+  command (`sed -i`, a script) isn't reported by its file tools, so in the
+  hooks mode it isn't reviewed, as in VS Code. Use the writer mode if you
+  want those too.
+- If `:Agentdiff hooks status` shows the hook installed but never a report
+  after the agent edited a file, the CLI's payload isn't understood: please
+  open an issue with the CLI's version.
 
 ## The store
 

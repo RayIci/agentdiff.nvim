@@ -36,14 +36,14 @@ flowchart LR
 
 ## What's covered
 
-149 tests in 17 spec files.
+195 tests in 20 spec files.
 
 ```mermaid
 xychart-beta
     title "Tests per spec file"
-    x-axis [actions, staging, merge, views, detect, store, fixes, integrations, render, session, buffers, attribution, surface, smoke, api, layers, harness]
-    y-axis "tests" 0 --> 20
-    bar [19, 18, 17, 15, 14, 12, 11, 9, 8, 6, 5, 5, 4, 2, 2, 1, 1]
+    x-axis [install, actions, staging, merge, views, detect, store, fixes, hooks, integrations, render, harness, journal, session, buffers, attribution, surface, smoke, api, layers]
+    y-axis "tests" 0 --> 25
+    bar [21, 19, 18, 17, 15, 14, 12, 11, 11, 9, 8, 8, 7, 6, 5, 5, 4, 2, 2, 1]
 ```
 
 ```mermaid
@@ -61,7 +61,9 @@ pie showData
     "Unsaved buffers" : 5
     "Author rule" : 5
     "Integrations" : 9
-    "Architecture guards (surface, layers, harness)" : 6
+    "Architecture guards and adapters" : 13
+    "Agent hooks: journal, reporter, hooks mode" : 18
+    "Hook install, status, command" : 21
     "Smoke and API docs" : 4
 ```
 
@@ -82,7 +84,10 @@ pie showData
 | `integrations_spec` | neo-tree component and renderers, oil and grug-far claims, integrations staying optional |
 | `surface_spec` | the public API, subcommands, options and highlight groups stay exactly as they are |
 | `layers_spec` | the dependency rule: no module requires one on a higher level |
-| `harness_spec` | the harness adapter registry |
+| `harness_spec` | the harness adapter registry; the Claude Code and Copilot CLI payload parsers (Edit, Write, MultiEdit, NotebookEdit, camelCase and VS Code-style payloads, patches, non-edit tools) |
+| `journal_spec` | the agent journal (concurrent reports, consumption, late duplicates, gc) and the `attribution` option |
+| `hooks_spec` | the reporter run as a real `nvim -l` process (store lookup, non-edit payloads, files outside projects, always exit 0) and the hooks mode (reported edit, generated file, shell edit, one change per report, Neovim closed, a late post report) |
+| `install_spec` | installing, reinstalling and uninstalling both harnesses at both scopes in temp directories, invalid JSON, quoting, `:Agentdiff hooks` status after a real hook run, completion |
 | `smoke_spec` | the plugin loads; per-test fixtures work |
 
 Each spec scenario from the original OpenSpec change has a test named after
@@ -91,7 +96,7 @@ it, e.g. `(Discard one hunk)` or `(Undo is undoable)`.
 ## Other checks
 
 ```sh
-stylua --check lua tests                                  # formatting
+stylua --check lua tests bin                                 # formatting
 lua-language-server --check=lua/agentdiff --checklevel=Warning   # types (LuaCATS)
 ```
 

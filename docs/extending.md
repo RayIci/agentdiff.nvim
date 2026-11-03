@@ -60,8 +60,10 @@ Rules:
   HEAD) avoid requiring `detect/`.
 
 Register it in `attribution/init.lua` with `M.register(require("agentdiff.attribution.mymode"))`.
-`attribution.active(s)` picks the mode for a session; today it is always
-`writer`, and an option to choose the mode belongs there.
+`attribution.active(s)` picks the mode for a session from the `attribution`
+option, and `setup()` rejects names that aren't registered. Two modes exist:
+`writer` and `hooks` (which reads `core/journal`). A future per-project or
+per-process choice belongs in `active(s)`, without touching the modes.
 
 ## A harness adapter
 
@@ -73,21 +75,45 @@ agentdiff's hook in the CLI's configuration.
 ---@class MyCli: AgentdiffHarness
 local M = { name = "mycli" }
 
----@param payload table   the hook's JSON from stdin
----@return AgentdiffHarnessReport?  { phase = "pre"|"post", paths = { abs… }, session? } or nil
-function M.parse(payload) end
+local payload = require("agentdiff.harness.payload")
+local settings = require("agentdiff.harness.settings")
+
+M.tools = { edit_file = true, write_file = true }
+
+---@param p table      the hook's JSON from stdin
+---@param hint? string  the event the hook was installed for ("pre"/"post")
+---@return AgentdiffHarnessReport?  { phase, paths = { abs… }, session? } or nil
+function M.parse(p, hint)
+  return payload.report(p, M.tools, hint)
+end
 
 ---@param scope "user"|"project"
----@param opts table
----@return boolean ok, string? message
-function M.install(scope, opts) end
+---@param opts AgentdiffHarnessOpts  { home, root, state_dir }
+---@return boolean ok, string message
+function M.install(scope, opts)
+  local file = opts.home .. "/.mycli/hooks.json"
+  local ok, changed = settings.update(file, function(data)
+    data.pre = settings.command(M.name, opts.state_dir, "pre")
+    return data
+  end)
+  return ok, ok and (changed and "installed in " or "already installed in ") .. file or tostring(changed)
+end
 function M.uninstall(scope, opts) end
 
----@return AgentdiffHarnessStatus  { installed, where? }
+---@return AgentdiffHarnessStatus  { installed, where = { files… } }
 function M.status(opts) end
 
 return M
 ```
+
+The helpers do the fiddly parts:
+
+| Helper | What it does |
+|---|---|
+| `payload.report(p, tools, hint)` | tool name from `tool_name`/`toolName`, arguments from `tool_input`/`toolArgs` (decoding JSON strings), paths from `file_path`, `path`, `filePath`, `filename`, `notebook_path` or patch headers, relative paths resolved against `cwd` |
+| `settings.command(harness, state_dir, phase)` | the shell command that runs the reporter with this Neovim (`$APPIMAGE` for an AppImage), quoted |
+| `settings.update(file, fn)` | read JSON (refusing invalid files), let `fn` change a copy, write it sorted and indented after a one-time `.agentdiff.bak` backup; nothing written when nothing changed; `fn` returning nil deletes the file |
+| `settings.ours(v)` | whether a value holds agentdiff's hook command (the `agentdiff-hook.lua` marker) |
 
 Rules:
 
@@ -95,10 +121,14 @@ Rules:
   must not touch Neovim state.
 - **`install` merges.** It edits the CLI's configuration without dropping
   anything else in it, and is idempotent (installing twice changes nothing).
-- **Absolute paths.** Return absolute paths; the caller maps them to the
-  project.
+- **Absolute paths.** Return absolute paths; the reporter maps them to every
+  reviewed project that contains them.
+- **Never fail the agent.** The reporter wraps everything in `pcall` and
+  always exits 0 without output; keep `parse` free of side effects so that
+  stays true.
 
-Register it in `harness/init.lua`.
+Register it in `harness/init.lua`; `:Agentdiff hooks` and its completion pick
+it up from the registry.
 
 ## An integration
 

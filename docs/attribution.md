@@ -280,6 +280,81 @@ flowchart LR
 - agentdiff can't tell who ran `git add`: if the agent stages its own edits,
   they're kept too. `keep_on_stage = false` turns staging-keeps off.
 
+## The hooks mode
+
+With `attribution = "hooks"` the question changes from "did Neovim write
+this?" to "did an agent say it was editing this?". Claude Code and Copilot CLI
+run agentdiff's hook before and after each file tool call; the hook writes a
+small report into the project's store, and the poller matches reports to
+changes.
+
+```mermaid
+sequenceDiagram
+    participant A as Agent CLI (tmux pane)
+    participant R as agentdiff-hook.lua<br/>(nvim -l, ~40 ms)
+    participant J as store/agent/ journal
+    participant F as file on disk
+    participant N as Neovim (poller)
+    A->>R: PreToolUse payload on stdin
+    R->>J: report { time, harness, paths }
+    R-->>A: exit 0, no output
+    A->>F: Edit tool writes src/a.lua
+    A->>R: PostToolUse payload
+    R->>J: report (a late duplicate)
+    N->>F: poll: D ≠ O for src/a.lua
+    N->>J: a report within 10 s of the file's mtime?
+    J-->>N: yes → author: AGENT, reports consumed
+```
+
+The reporter finds the project by walking up from each edited file: an
+ancestor directory whose store exists under the state directory is a
+reviewed project. Files outside every reviewed project are ignored, and so
+is any payload that isn't a file edit (shell commands, reads, malformed
+JSON).
+
+```mermaid
+flowchart TB
+    start(["file with D ≠ O"]) --> rev{"reviewable?"}
+    rev -- no --> skip["skip"]
+    rev -- yes --> writing{"Neovim writing it?"}
+    writing -- yes --> later["BufWritePost handles it"]
+    writing -- no --> claimed{"live claim?"}
+    claimed -- yes --> user["author: YOU<br/>(folded into the baseline)"]
+    claimed -- no --> report{"live report within 10 s<br/>of the file's mtime?"}
+    report -- yes --> agent["author: AGENT<br/>reports consumed"]
+    report -- no --> young{"changed less than<br/>1.5 s ago?"}
+    young -- yes --> wait["look again shortly<br/>(a post-only hook may be late)"]
+    young -- no --> user
+    wait -.-> start
+```
+
+Why match the **modification time** rather than "now":
+
+- Neovim may look much later than the edit: it only polls while focused, and
+  it may not be running at all. The file's mtime still says when the edit
+  happened, so a report from an hour ago matches an edit from an hour ago.
+- A report whose tool call failed (nothing changed) can't attribute a later,
+  unrelated change, because that change's mtime is far from the report.
+
+A matched report is consumed: it covers one change. The "post" report of an
+edit whose "pre" report was already used is dropped as a late duplicate (any
+report for that path within 2 s of the consumption), so a script that touches
+the same file right after the agent isn't blamed on it. Unmatched reports are
+deleted after a week.
+
+The rest is unchanged from the writer mode: Neovim's writes and claims are
+yours, staging keeps, keep and undo end conflicts. git-guard and discard
+detection aren't needed, since anything unreported is yours anyway.
+
+| Writer | writer mode | hooks mode |
+|---|---|---|
+| agent file tool (Edit, Write, apply_patch…) | agent | agent (reported) |
+| agent shell command (`sed -i`, a script) | agent | **yours** (not reported, as in VS Code) |
+| code generator, build, `touch` in a terminal | agent | **yours** |
+| neo-tree / file explorer writing directly | agent (unless claimed) | **yours** |
+| git checkout, pull, discard | yours (git-guard, discards) | yours |
+| Neovim, `:!cmd`, claims | yours | yours |
+
 ## What is never reviewed
 
 - anything inside a `.git` directory (commit messages, rebase todos, hooks);

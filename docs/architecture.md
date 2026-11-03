@@ -67,24 +67,24 @@ flowchart TB
         poll["poller<br/>timer · focus · shell"] ~~~ git["git<br/>guard · discards · staging"] ~~~ buf["buffers<br/>writes · FileChangedShell"]
     end
     subgraph L1["1 · attribution/ · harness/"]
-        reg["attribution registry"] ~~~ wr["writer mode"] ~~~ sh["shell"] ~~~ hr["harness registry"]
+        reg["attribution registry"] ~~~ wr["writer mode"] ~~~ hk["hooks mode"] ~~~ sh["shell"] ~~~ hr["harness registry<br/>claude · copilot · settings"]
     end
     subgraph L0["0 · core/ · config"]
-        mg["merge"] ~~~ sto["store"] ~~~ ses["session"] ~~~ stt["state"] ~~~ bl["baseline"] ~~~ ev["events"] ~~~ more["text · positions · claims · util"]
+        mg["merge"] ~~~ sto["store"] ~~~ ses["session"] ~~~ stt["state"] ~~~ bl["baseline"] ~~~ ev["events"] ~~~ more["text · positions · claims · journal · util"]
     end
     L6 --> L5 --> L4 --> L3 --> L2 --> L1 --> L0
 ```
 
 | Level | Directory | Modules | Responsibility |
 |---:|---|---|---|
-| 0 | `core/`, `config` | `merge` (212), `store` (520), `session` (145), `state` (154), `baseline` (146), `text` (81), `positions` (72), `claims` (71), `events` (41), `util` (69), `config` (137) | content and state: the line model and merge3, the private git store, per-file review state, the author rule and baseline writes, change events |
-| 1 | `attribution/` | `init` (58), `writer` (78), `shell` (70) | *who* changed a file: the mode interface and registry, the writer mode, shell-command recognition |
-| 1 | `harness/` | `init` (50) | the adapter interface and registry, one adapter per agent CLI |
+| 0 | `core/`, `config` | `merge` (212), `store` (528), `session` (145), `state` (154), `baseline` (146), `text` (81), `positions` (72), `claims` (71), `journal` (191), `events` (41), `util` (69), `config` (139) | content and state: the line model and merge3, the private git store, per-file review state, the author rule and baseline writes, the agent-report journal, change events |
+| 1 | `attribution/` | `init` (67), `writer` (78), `hooks` (114), `shell` (70) | *who* changed a file: the mode interface and registry, the writer and hooks modes, shell-command recognition |
+| 1 | `harness/` | `init` (65), `claude` (150), `copilot` (103), `payload` (106), `settings` (154) | the adapter interface and registry, one adapter per agent CLI, payload parsing and configuration-file editing |
 | 2 | `detect/` | `poller` (218), `git` (189) | *when* to look: timer, focus, shell windows; read-only views of the project's git (guard, discards, staging-keeps) |
 | 2 | `editor/` | `buffers` (371) | Neovim's own writes, external changes to loaded buffers, conflicts, the undo journal |
 | 3 | `ui/` | `overlay` (114), `hint` (92), `panel` (174), `sidebyside` (123), `status` (75), `highlights` (15) | drawing; reads state, never changes the baseline |
-| 4 | `actions/` | `review` (306), `navigate` (115), `resolve` (93), `onoff` (94), `reset` (30), `common` (49), `claim` (40) | user intent turned into baseline or file edits |
-| 5 | entry point | `init` (318), `command` (104), `keymaps` (77) | setup, start/stop, the public API, `:Agentdiff`, optional keymaps |
+| 4 | `actions/` | `review` (306), `navigate` (115), `resolve` (93), `onoff` (94), `reset` (30), `common` (49), `claim` (40), `hooks` (132) | user intent turned into baseline or file edits |
+| 5 | entry point | `init` (356), `command` (150), `keymaps` (77) | setup, start/stop, the public API, `:Agentdiff`, optional keymaps |
 | 6 | `integrations/` | `neotree` (72), `oil` (40), `grug_far` (20) | optional glue for other plugins; requires only the public `agentdiff` module |
 
 ## How the layers talk
@@ -111,6 +111,10 @@ flowchart LR
   lifecycle passed in by the entry point.
 - **The attribution mode** gets git helpers through its context, so a mode
   can use git-guard and discard detection without requiring `detect/`.
+
+Outside the layers, `bin/agentdiff-hook.lua` is the hook reporter agent CLIs
+run: a standalone `nvim -l` script that uses only `harness/` and
+`core/journal`, never a session.
 
 `core/merge.lua` is pure (no I/O, no Neovim state) and fully unit tested;
 `core/store.lua` is the only module that runs git against the store, and

@@ -6,7 +6,8 @@ An AI agent (Claude Code, Copilot CLI, Codex, …) runs in another tmux pane
 and writes straight to disk. agentdiff shows every one of those changes
 inline as a pending diff that you can step through and keep or undo, per
 change, per file or all at once. Edits you make in Neovim are never part of
-the review. No agent needs any configuration.
+the review. No agent needs any configuration; optionally, agent hooks can
+report exactly which files they edit (|agentdiff-hooks|).
 
 ==============================================================================
 CONTENTS                                           *agentdiff-contents*
@@ -59,6 +60,11 @@ never used as a project unless you set `root`.
 
 ==============================================================================
 3. OPTIONS                                          *agentdiff-options*
+
+`attribution`    (string, default `"writer"`)
+                 who changed a file: `"writer"` (anything Neovim didn't write
+                 is the agent's) or `"hooks"` (only what an agent hook
+                 reported). See |agentdiff-hooks|.
 
 `keymaps`        (table|false, default `false`)
                  `action = lhs` pairs. Actions: `next`, `prev`, `next_file`,
@@ -179,6 +185,12 @@ Views~
                                 changes, start over from its files
     toggle / enable / disable   turn review on / off (persisted)
     status                      show the pending summary
+    hooks [action] [harness] [scope]
+                                manage agentdiff's hook in agent CLIs:
+                                action `install`, `uninstall` or `status`
+                                (default), harness `claude`, `copilot` or
+                                `all` (default), scope `user` (default) or
+                                `project`. See |agentdiff-hooks|.
 
 ==============================================================================
 6. LUA API                                              *agentdiff-api*
@@ -249,6 +261,17 @@ path_status({path})                              *agentdiff.path_status()*
     "file" when the file has pending changes, "dir" when a directory
     contains such a file at any depth, nil otherwise. Cheap enough to call
     for every line of a file tree.
+
+hooks_install({harness}, {scope})                  *agentdiff.hooks_install()*
+hooks_uninstall({harness}, {scope})              *agentdiff.hooks_uninstall()*
+    Add or remove agentdiff's hook in an agent CLI. {harness}: "claude",
+    "copilot" or "all" (default); {scope}: "user" (default) or "project".
+    Returns true on success. See |agentdiff-hooks|.
+
+hooks_status({opts})                                *agentdiff.hooks_status()*
+    Per harness: `installed`, `where` (configuration files holding the hook)
+    and `last_report` (ms since the epoch of its newest report for the
+    current project, or nil). Shown unless `{ silent = true }`.
 
 ==============================================================================
 7. PANEL                                              *agentdiff-panel*
@@ -352,6 +375,47 @@ are always baseline → current content.
 A newly seen, unclaimed change waits `settle` ms before it is confirmed as the
 agent's, so claims from other instances can arrive first.
 
+The above is the writer mode, the default. With `attribution = "hooks"`
+(|agentdiff-hooks|), a change Neovim didn't make is the agent's only when an
+agent hook reported the file; the git rules aren't needed then.
+
+Agent hooks~                                             *agentdiff-hooks*
+
+Claude Code and Copilot CLI can run a command before and after each tool
+call. agentdiff's hook records the files their file tools edit, so the hooks
+mode reviews exactly those and folds everything else into the baseline
+(generators, build output, files created by other programs). Set it up once:
+>lua
+    require("agentdiff").setup({ attribution = "hooks" })
+<
+    :Agentdiff hooks install                 both CLIs, user scope
+    :Agentdiff hooks install claude project  `.claude/settings.local.json`
+    :Agentdiff hooks status                  where, and the last report
+
+Configuration files written:
+
+    claude   user: `~/.claude/settings.json`
+             project: `.claude/settings.local.json`
+             tools: Edit, Write, MultiEdit, NotebookEdit
+    copilot  user: `~/.copilot/hooks/agentdiff.json`
+             project: `.github/hooks/agentdiff.json`
+             tools: edit, create, str_replace_editor, write, apply_patch
+
+Install keeps your other settings and hooks, backs the original file up once
+to `<file>.agentdiff.bak`, and changes nothing when already installed.
+Uninstall removes only agentdiff's entries.
+
+The hook runs `bin/agentdiff-hook.lua` with this Neovim (`-u NONE -l`, about
+40 ms). It records the edit in the project's store, prints nothing and always
+exits 0, so it never blocks or fails the agent's tool call, and it works
+whether or not Neovim is running. The store location is written into the
+hook command: install again after changing `state_dir` or moving the plugin.
+
+A report matches a change when it was made within 10 s of the file's
+modification time; it covers that one change. Agent edits made through shell
+commands (`sed -i`, scripts) aren't reported and so aren't reviewed, as in
+VS Code.
+
 ==============================================================================
 12. THE STORE                                           *agentdiff-store*
 
@@ -368,9 +432,12 @@ disk, with nothing pending.
 ==============================================================================
 13. LIMITATIONS                                   *agentdiff-limitations*
 
-- A program outside Neovim that isn't an agent (a build script in another
-  pane, another editor) is shown as an agent change unless its output is
-  ignored. Keep-file or keep-all dismisses it quickly.
+- In the writer mode, a program outside Neovim that isn't an agent (a build
+  script in another pane, another editor) is shown as an agent change unless
+  its output is ignored. Keep-file or keep-all dismisses it quickly; the
+  hooks mode avoids it.
+- In the hooks mode, agent edits made through shell commands aren't
+  reviewed, and an agent CLI without an adapter isn't reviewed at all.
 - Discarding unstaged changes while other changes to the same file are
   staged moves the file toward the index, not HEAD, and is shown.
 - Files inside nested git repositories are not reviewed.
