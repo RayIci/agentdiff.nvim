@@ -279,6 +279,7 @@ describe("reset", function()
     eq({ "modified a.lua +1 -1 #1" }, H.pending())
     -- switch to the other project, give it a pending change, reset it
     agentdiff.setup({
+      attribution = "writer",
       root = other,
       state_dir = H.state .. "/agentdiff",
       poll_interval = 0,
@@ -294,6 +295,7 @@ describe("reset", function()
     eq({}, H.pending())
     -- back to the first project: its pending change is still there
     agentdiff.setup({
+      attribution = "writer",
       root = H.project,
       state_dir = H.state .. "/agentdiff",
       poll_interval = 0,

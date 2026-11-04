@@ -22,7 +22,7 @@ local M = {}
 
 ---@class AgentdiffOptions
 ---@field keymaps AgentdiffKeymaps|false  mappings to create; false (default) creates none
----@field attribution string               who changed a file: "writer" (default) or "hooks"
+---@field attribution string               who changed a file: "hooks" (default: what agent hooks report) or "writer" (anything Neovim didn't write)
 ---@field poll_interval integer           ms between disk checks while Neovim is focused
 ---@field settle integer                  ms before an unclaimed change is confirmed as the agent's
 ---@field claim_ttl integer               ms a claim stays valid
@@ -39,7 +39,7 @@ local M = {}
 ---@type AgentdiffOptions
 M.defaults = {
   keymaps = false,
-  attribution = "writer",
+  attribution = "hooks",
   poll_interval = 1000,
   settle = 300,
   claim_ttl = 10000,

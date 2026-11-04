@@ -169,6 +169,7 @@ describe("on/off toggle", function()
     agentdiff._test.reset()
     vim.cmd("silent! %bwipeout!")
     agentdiff.setup({
+      attribution = "writer",
       root = H.project,
       state_dir = H.state .. "/agentdiff",
       poll_interval = 0,

@@ -12,7 +12,7 @@ local function second_instance_writes(rel, line)
 package.path = %q .. "/lua/?.lua;" .. %q .. "/lua/?/init.lua;" .. package.path
 vim.o.swapfile = false
 local a = require("agentdiff")
-a.setup({ root = %q, state_dir = %q, poll_interval = 0, auto_start = false })
+a.setup({ attribution = "writer", root = %q, state_dir = %q, poll_interval = 0, auto_start = false })
 a.start()
 assert(a._test.wait_ready(5000))
 vim.cmd.edit(%q)

@@ -9,6 +9,7 @@ describe("session startup", function()
       end
       local agentdiff = require("agentdiff")
       agentdiff.setup({
+        attribution = "writer",
         root = H.project,
         state_dir = H.state .. "/agentdiff",
         poll_interval = 0,
@@ -68,7 +69,12 @@ describe("startup guards", function()
     local home = vim.env.HOME
     vim.env.HOME = H.project
     local agentdiff = require("agentdiff")
-    agentdiff.setup({ state_dir = H.state .. "/agentdiff", poll_interval = 0, auto_start = false })
+    agentdiff.setup({
+      attribution = "writer",
+      state_dir = H.state .. "/agentdiff",
+      poll_interval = 0,
+      auto_start = false,
+    })
     agentdiff.start()
     vim.env.HOME = home
     eq(nil, agentdiff._test.session())
@@ -86,6 +92,7 @@ describe("startup guards", function()
     end
     local agentdiff = require("agentdiff")
     agentdiff.setup({
+      attribution = "writer",
       root = H.project,
       state_dir = H.state .. "/agentdiff",
       poll_interval = 0,

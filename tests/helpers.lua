@@ -5,6 +5,8 @@ local H = {}
 H.project = nil
 ---@type string?  XDG_STATE_HOME of the running test
 H.state = nil
+---@type string?  the real HOME, restored after each test
+local real_home = nil
 
 local function rmrf(path)
   if path and vim.uv.fs_stat(path) then
@@ -21,6 +23,10 @@ function H.begin_test()
   -- Resolve symlinks once so paths compare equal to what the plugin computes.
   H.project = vim.uv.fs_realpath(H.project)
   vim.env.XDG_STATE_HOME = H.state
+  -- agent CLI settings (~/.claude, ~/.copilot) are read from a temp home
+  real_home = vim.env.HOME
+  vim.env.HOME = H.state .. "/home"
+  vim.fn.mkdir(vim.env.HOME, "p")
   vim.cmd.cd(H.project)
 end
 
@@ -30,6 +36,7 @@ function H.end_test()
     loaded._test.reset()
   end
   vim.cmd("silent! %bwipeout!")
+  vim.env.HOME = real_home
   vim.cmd.cd(vim.fn.stdpath("cache"))
   rmrf(H.project)
   rmrf(H.state)
@@ -151,6 +158,9 @@ end
 function H.start(opts)
   local agentdiff = require("agentdiff")
   agentdiff.setup(vim.tbl_extend("force", {
+    -- most specs exercise the writer mode: an agent is simulated by writing
+    -- files directly; hooks-mode specs pass attribution = "hooks"
+    attribution = "writer",
     root = H.project,
     state_dir = H.state .. "/agentdiff",
     poll_interval = 0,

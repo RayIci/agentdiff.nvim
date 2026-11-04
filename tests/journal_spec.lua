@@ -56,10 +56,18 @@ describe("journal", function()
 end)
 
 describe("attribution option", function()
-  it("defaults to the writer mode (Default mode)", function()
-    local agentdiff = H.start()
-    eq("writer", agentdiff._test.session().opts.attribution)
-    eq("writer", require("agentdiff.attribution").active(agentdiff._test.session()).name)
+  it("defaults to the hooks mode (Default mode)", function()
+    local agentdiff = require("agentdiff")
+    agentdiff.setup({
+      root = H.project,
+      state_dir = H.state .. "/agentdiff",
+      poll_interval = 0,
+      auto_start = false,
+    })
+    agentdiff.start()
+    ok(agentdiff._test.wait_ready(5000), "ready")
+    eq("hooks", agentdiff._test.session().opts.attribution)
+    eq("hooks", require("agentdiff.attribution").active(agentdiff._test.session()).name)
   end)
 
   it("rejects an unknown mode (Unknown mode)", function()
