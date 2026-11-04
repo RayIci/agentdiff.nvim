@@ -83,7 +83,7 @@ once when it starts.
 |---|---|---|
 | `attribution` | `"hooks"` | who changed a file: `"hooks"` (only what an agent hook reported) or `"writer"` (anything Neovim didn't write is the agent's); see [Attribution](#attribution) |
 | `keymaps` | `false` | table of `action = lhs` (`next`, `prev`, `next_file`, `prev_file`, `keep`, `undo`, `keep_file`, `undo_file`, `keep_all`, `undo_all`, `panel`, `panel_tree`, `panel_list`, `view`, `overlay`, `resolve`); `keep`/`undo` are also mapped in visual mode |
-| `panel` | see [Panel](#panel) | `view` (`"tree"` or `"list"`), `position` (`"right"`, `"left"`, `"top"`, `"bottom"`), `size` (`40` columns/rows, or `"30%"` / `0.3` of the editor), `icons` (`true`) |
+| `panel` | see [Panel](#panel) | `view` (`"tree"` or `"list"`), `position` (`"right"`, `"left"`, `"top"`, `"bottom"`), `size` (`40` columns/rows, `"30%"` / `0.3` of the editor, or a function returning one of these), `icons` (`true`) |
 | `poll_interval` | `1000` | ms between disk checks while Neovim is focused (`0` disables the timer) |
 | `settle` | `300` | ms an unclaimed change waits before it's confirmed as the agent's |
 | `claim_ttl` | `10000` | ms an unused claim stays valid |
@@ -199,7 +199,9 @@ require("agentdiff").setup({
   panel = {
     view = "tree",       -- or "list": the view panel() opens first
     position = "right",  -- "left", "top", "bottom"
-    size = 40,           -- columns (or rows at top/bottom); "30%" or 0.3 for a share of the editor
+    size = 40,           -- columns (or rows at top/bottom); "30%" or 0.3 for a share of the editor;
+                         -- or a function, e.g. 30% but at least 45 columns:
+                         -- function(ctx) return math.max(45, math.floor(ctx.total * 0.3)) end
     icons = true,        -- mini.icons or nvim-web-devicons when installed, built-in Nerd Font glyphs otherwise
   },
   keymaps = { panel_tree = "<leader>rp", panel_list = "<leader>rP" },

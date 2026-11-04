@@ -418,6 +418,10 @@ function M.size(o)
   local vertical = o.position == "left" or o.position == "right"
   local total = vertical and vim.o.columns or (vim.o.lines - vim.o.cmdheight - 1)
   local size = o.size
+  if type(size) == "function" then
+    local ok, v = pcall(size, { position = o.position, total = total })
+    size = ok and config.valid_size(v) and v or config.defaults.panel.size
+  end
   local share
   if type(size) == "string" then
     share = tonumber(size:match("^(%d+)%%$")) / 100

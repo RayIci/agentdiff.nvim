@@ -25,7 +25,7 @@ local M = {}
 ---@class AgentdiffPanelOptions
 ---@field view "tree"|"list"                      the view the panel first opens in
 ---@field position "right"|"left"|"top"|"bottom"  the edge it opens at
----@field size integer|number|string              columns/rows (40), or a share of the editor (0.3, "30%")
+---@field size integer|number|string|fun(ctx: { position: string, total: integer }): integer|number|string  columns/rows (40), a share of the editor (0.3, "30%"), or a function returning one
 ---@field icons boolean                           file and folder icons (mini.icons, nvim-web-devicons or built-in)
 
 ---@class AgentdiffOptions
@@ -107,6 +107,17 @@ local keymap_fields = {
 }
 M.keymap_fields = keymap_fields
 
+---A panel size value: columns/rows (≥ 1), a fraction (0, 1) or "N%".
+---@param size any
+---@return boolean
+function M.valid_size(size)
+  if type(size) == "number" then
+    return size > 0
+  end
+  local pct = type(size) == "string" and tonumber(size:match("^(%d+)%%$"))
+  return pct ~= nil and pct > 0 and pct <= 100
+end
+
 ---Merge user options over the defaults and validate them.
 ---@param opts table?
 ---@return AgentdiffOptions
@@ -142,10 +153,9 @@ function M.resolve(opts)
       ("agentdiff: panel.position must be right, left, top or bottom, got %s"):format(vim.inspect(p.position))
     )
   end
-  local pct = type(p.size) == "string" and tonumber(p.size:match("^(%d+)%%$"))
-  if not ((type(p.size) == "number" and p.size > 0) or (pct and pct > 0 and pct <= 100)) then
+  if type(p.size) ~= "function" and not M.valid_size(p.size) then
     error(
-      ('agentdiff: panel.size must be a number of columns/rows, a fraction or "N%%", got %s'):format(
+      ('agentdiff: panel.size must be a number of columns/rows, a fraction, "N%%" or a function, got %s'):format(
         vim.inspect(p.size)
       )
     )

@@ -85,7 +85,11 @@ never used as a project unless you set `root`.
                  `position`  `"right"` (default), `"left"`, `"top"`,
                              `"bottom"`
                  `size`      columns (rows at top/bottom), default `40`; or
-                             a share of the editor: `"30%"` or `0.3`
+                             a share of the editor: `"30%"` or `0.3`; or a
+                             function `fun(ctx)` returning one of these,
+                             with `ctx.position` and `ctx.total` (editor
+                             columns, or rows at top/bottom), called again on
+                             resize; on an error or a bad value, `40`
                  `icons`     `true` (default): mini.icons or
                              nvim-web-devicons when installed, built-in Nerd
                              Font glyphs otherwise; `false`: none

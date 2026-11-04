@@ -295,6 +295,40 @@ describe("panel position and size", function()
     vim.o.columns = cols
   end)
 
+  it("computes the size with a function (Size from a function)", function()
+    local cols = vim.o.columns
+    vim.o.columns = 100
+    local seen
+    local win = panel_win({
+      size = function(ctx)
+        seen = ctx
+        return math.max(45, math.floor(ctx.total * 0.3))
+      end,
+    })
+    eq({ position = "right", total = 100 }, seen)
+    eq(45, vim.api.nvim_win_get_width(win))
+    vim.o.columns = 200
+    vim.api.nvim_exec_autocmds("VimResized", {})
+    eq(60, vim.api.nvim_win_get_width(win))
+    vim.o.columns = cols
+  end)
+
+  it("falls back to 40 columns when the size function fails", function()
+    local win = panel_win({
+      size = function()
+        return "wide"
+      end,
+    })
+    eq(40, vim.api.nvim_win_get_width(win))
+    require("agentdiff")._test.reset()
+    win = panel_win({
+      size = function()
+        error("boom")
+      end,
+    })
+    eq(40, vim.api.nvim_win_get_width(win))
+  end)
+
   it("rejects invalid options", function()
     for _, p in ipairs({
       { view = "grid" },
