@@ -6,8 +6,9 @@ An AI agent (Claude Code, Copilot CLI, Codex, …) runs in another tmux pane
 and writes straight to disk. agentdiff shows every one of those changes
 inline as a pending diff that you can step through and keep or undo, per
 change, per file or all at once. Edits you make in Neovim are never part of
-the review. No agent needs any configuration; optionally, agent hooks can
-report exactly which files they edit (|agentdiff-hooks|).
+the review. By default only the edits agents report through their hooks are
+reviewed (|agentdiff-hooks|); the writer mode reviews every change Neovim
+didn't make and needs no agent configuration.
 
 ==============================================================================
 CONTENTS                                           *agentdiff-contents*
@@ -54,6 +55,13 @@ CONTENTS                                           *agentdiff-contents*
 No keymaps are created unless you pass them. `keep` and `undo` are also
 mapped in visual mode, where they act on the selected lines.
 
+Then install the agent hooks once (|agentdiff-hooks|): >vim
+    :Agentdiff hooks install
+<
+Until a hook is installed nothing is reviewed, and agentdiff says so once.
+To review every change Neovim didn't make instead, with no hooks, set
+`attribution = "writer"`.
+
 Review starts on |VimEnter| for the project of the current directory: the git
 toplevel, or the directory itself outside git. The home directory and `/` are
 never used as a project unless you set `root`.
@@ -61,10 +69,10 @@ never used as a project unless you set `root`.
 ==============================================================================
 3. OPTIONS                                          *agentdiff-options*
 
-`attribution`    (string, default `"writer"`)
-                 who changed a file: `"writer"` (anything Neovim didn't write
-                 is the agent's) or `"hooks"` (only what an agent hook
-                 reported). See |agentdiff-hooks|.
+`attribution`    (string, default `"hooks"`)
+                 who changed a file: `"hooks"` (only what an agent hook
+                 reported) or `"writer"` (anything Neovim didn't write is the
+                 agent's). See |agentdiff-hooks|.
 
 `keymaps`        (table|false, default `false`)
                  `action = lhs` pairs. Actions: `next`, `prev`, `next_file`,
@@ -375,19 +383,17 @@ are always baseline → current content.
 A newly seen, unclaimed change waits `settle` ms before it is confirmed as the
 agent's, so claims from other instances can arrive first.
 
-The above is the writer mode, the default. With `attribution = "hooks"`
-(|agentdiff-hooks|), a change Neovim didn't make is the agent's only when an
-agent hook reported the file; the git rules aren't needed then.
+The above is the writer mode (`attribution = "writer"`). In the default hooks
+mode (|agentdiff-hooks|), a change Neovim didn't make is the agent's only when
+an agent hook reported the file; the git rules aren't needed then.
 
 Agent hooks~                                             *agentdiff-hooks*
 
 Claude Code and Copilot CLI can run a command before and after each tool
 call. agentdiff's hook records the files their file tools edit, so the hooks
-mode reviews exactly those and folds everything else into the baseline
-(generators, build output, files created by other programs). Set it up once:
->lua
-    require("agentdiff").setup({ attribution = "hooks" })
-<
+mode (the default) reviews exactly those and folds everything else into the
+baseline (generators, build output, files created by other programs). Set it
+up once:
     :Agentdiff hooks install                 both CLIs, user scope
     :Agentdiff hooks install claude project  `.claude/settings.local.json`
     :Agentdiff hooks status                  where, and the last report

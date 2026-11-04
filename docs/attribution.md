@@ -2,13 +2,20 @@
 
 VS Code knows which edits came from its agent because the agent edits
 *through* the editor. A CLI agent in another tmux pane writes straight to
-disk, so agentdiff can't ask the agent anything. It relies on one fact
-instead:
+disk, so agentdiff has two ways to tell:
+
+- **The hooks mode (the default):** the agent CLI reports each file its edit
+  tools change, through agentdiff's hook. Only those changes are reviewed;
+  see [The hooks mode](#the-hooks-mode).
+- **The writer mode** (`attribution = "writer"`): no hooks, no configuration
+  of Claude Code, Copilot CLI or Codex. It relies on one fact:
 
 > **Neovim knows every write it makes. Any change on disk that Neovim didn't
 > make (and that nobody claimed) is the agent's.**
 
-No hooks, no configuration of Claude Code, Copilot CLI or Codex.
+The author rule, the scenarios and what is never reviewed apply to both
+modes; the claims, git-guard and discard sections are how the writer mode
+avoids blaming the agent for other writers.
 
 - [The author rule](#the-author-rule)
 - [How a disk change gets its author](#how-a-disk-change-gets-its-author)
@@ -20,6 +27,7 @@ No hooks, no configuration of Claude Code, Copilot CLI or Codex.
   - [The writes overlap: a conflict](#the-writes-overlap-a-conflict)
   - [Undo, and undoing the undo](#undo-and-undoing-the-undo)
   - [Git operations and discards](#git-operations-and-discards)
+- [The hooks mode](#the-hooks-mode)
 - [What is never reviewed](#what-is-never-reviewed)
 
 ## The author rule
@@ -282,7 +290,7 @@ flowchart LR
 
 ## The hooks mode
 
-With `attribution = "hooks"` the question changes from "did Neovim write
+In the hooks mode (the default) the question changes from "did Neovim write
 this?" to "did an agent say it was editing this?". Claude Code and Copilot CLI
 run agentdiff's hook before and after each file tool call; the hook writes a
 small report into the project's store, and the poller matches reports to

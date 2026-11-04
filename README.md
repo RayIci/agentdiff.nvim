@@ -7,11 +7,12 @@ changes inline as a pending diff, which you can step through and **keep** or
 **undo** per change, per file or all at once. Edits you make in Neovim are
 never part of the review.
 
-No agent needs any configuration: by default a change on disk that Neovim did
-not make is the agent's. If code generators, build scripts or file explorers
-also write into your projects, switch to the **hooks** mode, where only the
-edits Claude Code or Copilot CLI report through their hooks are reviewed (see
-[Attribution](#attribution)).
+By default only the edits agents report through their hooks are reviewed
+(Claude Code and Copilot CLI; run `:Agentdiff hooks install` once), so code
+generators, build scripts and file explorers writing into your projects never
+show up as agent changes. For agents without hooks, or to also review the
+agent's shell edits, the **writer** mode needs no setup at all: any change on
+disk that Neovim did not make is the agent's (see [Attribution](#attribution)).
 
 ## Documentation
 
@@ -49,13 +50,14 @@ With [lazy.nvim](https://github.com/folke/lazy.nvim):
 ```
 
 Don't lazy-load it on a command or key: it tells your edits from the agent's
-by watching Neovim's own writes, so files you save before it loads would
-later show up as agent changes. Help is in `:help agentdiff`.
+by watching Neovim's own writes, so in the writer mode files you save before
+it loads would later show up as agent changes. Help is in `:help agentdiff`.
 
 ## Setup
 
 ```lua
 require("agentdiff").setup({
+  -- attribution = "writer",  -- review every change Neovim didn't make (no hooks needed)
   -- No keymaps are created unless you pass them.
   keymaps = {
     next = "]a",
@@ -66,11 +68,20 @@ require("agentdiff").setup({
 })
 ```
 
+Then install the agent hooks once (see [Attribution](#attribution)):
+
+```vim
+:Agentdiff hooks install
+```
+
+Until a hook is installed, the hooks mode reviews nothing; agentdiff says so
+once when it starts.
+
 ### Options
 
 | Option | Default | Meaning |
 |---|---|---|
-| `attribution` | `"writer"` | who changed a file: `"writer"` (anything Neovim didn't write is the agent's) or `"hooks"` (only what an agent hook reported); see [Attribution](#attribution) |
+| `attribution` | `"hooks"` | who changed a file: `"hooks"` (only what an agent hook reported) or `"writer"` (anything Neovim didn't write is the agent's); see [Attribution](#attribution) |
 | `keymaps` | `false` | table of `action = lhs` (`next`, `prev`, `next_file`, `prev_file`, `keep`, `undo`, `keep_file`, `undo_file`, `keep_all`, `undo_all`, `panel`, `view`, `overlay`, `resolve`); `keep`/`undo` are also mapped in visual mode |
 | `poll_interval` | `1000` | ms between disk checks while Neovim is focused (`0` disables the timer) |
 | `settle` | `300` | ms an unclaimed change waits before it's confirmed as the agent's |
@@ -202,8 +213,9 @@ Writing your own: see [docs/extending.md](docs/extending.md).
 Every file has a **baseline**: the last version you agreed with. Pending
 changes are always *baseline → current content*.
 
-This is the default **writer** mode; the [hooks mode](#attribution) replaces
-the first rule and the git rules with "an agent hook reported the file".
+These are the rules of the **writer** mode (`attribution = "writer"`). The
+default [hooks mode](#attribution) replaces the first rule and the git rules
+with "an agent hook reported the file"; the others apply to both.
 
 - A change on disk that Neovim did not make is the **agent's**: the baseline
   stays, so the change becomes pending.
@@ -232,17 +244,13 @@ the first rule and the git rules with "an agent hook reported the file".
 
 | Mode | A change Neovim didn't make is the agent's when… | Setup |
 |---|---|---|
-| `"writer"` (default) | always (unless git produced it or it's a discard, above) | none; works with any agent |
-| `"hooks"` | an agent hook reported that file around the time it changed | `:Agentdiff hooks install` once |
+| `"hooks"` (default) | an agent hook reported that file around the time it changed | `:Agentdiff hooks install` once |
+| `"writer"` | always (unless git produced it or it's a discard, above) | none; works with any agent, shell edits included |
 
 In the hooks mode, everything else that writes into the project (generators,
 build output, files created in a terminal or by a file explorer) is folded into
 the baseline silently. Neovim's own writes, claims, staging-keeps and conflicts
 work exactly as in the writer mode.
-
-```lua
-require("agentdiff").setup({ attribution = "hooks" })
-```
 
 ```vim
 :Agentdiff hooks install            " Claude Code and Copilot CLI, user scope

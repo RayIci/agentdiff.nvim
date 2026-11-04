@@ -9,7 +9,7 @@ Each group ends with `make test`, `make fmt-check` and lua_ls clean, and is comm
 
 ## 2. Docs
 
-- [ ] 2.1 Present the hooks mode as the default in the README, `doc/agentdiff.txt` and `docs/attribution.md`, with the writer mode as the zero-setup alternative; verify the API doc tests, `:helptags` and Mermaid parsing
+- [x] 2.1 Present the hooks mode as the default in the README, `doc/agentdiff.txt` and `docs/attribution.md`, with the writer mode as the zero-setup alternative; verify the API doc tests, `:helptags` and Mermaid parsing
 
 ## Workflow follow-up
 
