@@ -118,15 +118,41 @@ flowchart LR
 
 ## Panel, side-by-side view, statusline, file tree
 
-```
- agentdiff  3 files · 6 changes          ← panel (<leader>rr)
+The panel (tree view; `t` switches to the list):
 
- M src/a.lua  +3 −1
- A src/new.lua  +20 −0
- D old.lua  +0 −12
-
- <CR> open  K/U keep/undo file  gK/gU all  q close
 ```
+ 󰚩 Agent changes         5 files  +5 −2
+
+  docs                            −1
+     gone.md                    −1  D
+  lua/agentdiff                +4 −1
+    ui                         +2 −1
+       icons.lua                +2  A
+       panel.lua                −1  M
+     init.lua                   +2  M
+   README.md                    +1  M
+
+ ? keys
+```
+
+It is drawn from rows (`ui/panel.rows`): text with highlight ranges, plus
+right-aligned virtual text for counts and status, so nothing shifts with the
+window width. Folders are compacted while they hold a single folder, and
+collapsed folders are remembered for the session.
+
+```mermaid
+flowchart LR
+    key(["<CR> / o on a file"]) --> ed{"current window<br/>an editing window?"}
+    ed -- yes --> open["open the file there"]
+    ed -- "no (panel, baseline, tree)" --> prev{"previous window<br/>editing?"}
+    prev -- yes --> open
+    prev -- no --> any{"another editing<br/>window in the tab?"}
+    any -- yes --> open
+    any -- no --> split["new split beside the panel"] --> open
+```
+
+The panel window is pinned to its buffer (`winfixbuf`), so nothing else can
+take it over; `next`/`prev` from the panel use the same window choice.
 
 ```mermaid
 flowchart LR

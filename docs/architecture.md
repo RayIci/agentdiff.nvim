@@ -61,7 +61,7 @@ flowchart TB
         rev["review<br/>keep · undo · ranges"] ~~~ nav["navigate"] ~~~ res["resolve"] ~~~ oo["onoff · reset · claim"]
     end
     subgraph L3["3 · ui/"]
-        ov["overlay"] ~~~ hint["hint"] ~~~ panel["panel"] ~~~ sbs["sidebyside"] ~~~ st["status"]
+        ov["overlay"] ~~~ hint["hint"] ~~~ panel["panel<br/>tree · list · icons"] ~~~ win["windows"] ~~~ sbs["sidebyside"] ~~~ st["status"]
     end
     subgraph L2["2 · detect/ · editor/"]
         poll["poller<br/>timer · focus · shell"] ~~~ git["git<br/>guard · discards · staging"] ~~~ buf["buffers<br/>writes · FileChangedShell"]
@@ -82,7 +82,7 @@ flowchart TB
 | 1 | `harness/` | `init` (65), `claude` (150), `copilot` (103), `payload` (106), `settings` (154) | the adapter interface and registry, one adapter per agent CLI, payload parsing and configuration-file editing |
 | 2 | `detect/` | `poller` (218), `git` (189) | *when* to look: timer, focus, shell windows; read-only views of the project's git (guard, discards, staging-keeps) |
 | 2 | `editor/` | `buffers` (371) | Neovim's own writes, external changes to loaded buffers, conflicts, the undo journal |
-| 3 | `ui/` | `overlay` (114), `hint` (92), `panel` (174), `sidebyside` (123), `status` (75), `highlights` (15) | drawing; reads state, never changes the baseline |
+| 3 | `ui/` | `overlay` (114), `hint` (92), `panel` (619), `icons` (55), `windows` (66), `sidebyside` (123), `status` (75), `highlights` (33) | drawing; reads state, never changes the baseline; `windows` picks the editing window files open in |
 | 4 | `actions/` | `review` (306), `navigate` (115), `resolve` (93), `onoff` (94), `reset` (30), `common` (49), `claim` (40), `hooks` (132) | user intent turned into baseline or file edits |
 | 5 | entry point | `init` (356), `command` (150), `keymaps` (77) | setup, start/stop, the public API, `:Agentdiff`, optional keymaps |
 | 6 | `integrations/` | `neotree` (72), `oil` (40), `grug_far` (20) | optional glue for other plugins; requires only the public `agentdiff` module |

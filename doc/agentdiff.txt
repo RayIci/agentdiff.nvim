@@ -77,8 +77,18 @@ never used as a project unless you set `root`.
 `keymaps`        (table|false, default `false`)
                  `action = lhs` pairs. Actions: `next`, `prev`, `next_file`,
                  `prev_file`, `keep`, `undo`, `keep_file`, `undo_file`,
-                 `keep_all`, `undo_all`, `panel`, `view`, `overlay`,
-                 `resolve`.
+                 `keep_all`, `undo_all`, `panel`, `panel_tree`,
+                 `panel_list`, `view`, `overlay`, `resolve`.
+
+`panel`          (table) the changed-files panel, |agentdiff-panel|:
+                 `view`      `"tree"` (default) or `"list"`
+                 `position`  `"right"` (default), `"left"`, `"top"`,
+                             `"bottom"`
+                 `size`      columns (rows at top/bottom), default `40`; or
+                             a share of the editor: `"30%"` or `0.3`
+                 `icons`     `true` (default): mini.icons or
+                             nvim-web-devicons when installed, built-in Nerd
+                             Font glyphs otherwise; `false`: none
 
 `poll_interval`  (integer, default `1000`)
                  ms between disk checks while Neovim is focused. `0` disables
@@ -184,7 +194,7 @@ Views~
                                 only the pending lines in it
     keep_file / undo_file       every change in the current file
     keep_all / undo_all         every change in every file (asks first)
-    panel                       toggle the changed-files panel
+    panel [tree|list]           toggle the changed-files panel, in a view
     view                        toggle inline / side-by-side
     overlay                     hide / show the overlay
     resolve                     resolve a conflicted file
@@ -243,8 +253,13 @@ resolve({choice})                                    *agentdiff.resolve()*
     Resolve a conflicted file: "accept" (the agent's changes with your other
     unsaved edits on top), "agent", "mine" or "compare"; asks when nil.
 
-panel() / toggle_view() / toggle_overlay()
-    Views, see |agentdiff-panel| and |agentdiff-reviewing|.
+panel({opts})                                          *agentdiff.panel()*
+    Toggle the changed-files panel. With `{ view = "tree" }` or `"list"`:
+    open in that view, close when it is showing, switch from the other
+    view. Without a view: the last view used. See |agentdiff-panel|.
+
+toggle_view() / toggle_overlay()
+    Views, see |agentdiff-reviewing|.
 
 reset({opts})                                          *agentdiff.reset()*
     Forget every pending change of the current project and start over from
@@ -284,15 +299,30 @@ hooks_status({opts})                                *agentdiff.hooks_status()*
 ==============================================================================
 7. PANEL                                              *agentdiff-panel*
 
-The panel lists every file with pending changes, its status letter (M
-modified, A created, D deleted, B binary or oversized, C conflicted) and its
-added/removed line counts, in navigation order.
+The panel shows every file with pending changes as a tree (folders first, a
+folder holding only one folder compacted as `lua/agentdiff`, each with its
+total counts) or as a list (file name, then its folder), with right-aligned
+added/removed counts and the status letter (M modified, A created, D
+deleted, B binary or oversized, C conflicted). Colours come from the
+`AgentdiffPanel*` groups (|agentdiff-highlights|), icons from mini.icons or
+nvim-web-devicons when installed.
 
-    <CR>, o    open the file at its first change
+    <CR>, o    open the file at its first change; on a folder, fold it
     K / U      keep / undo the file under the cursor
     gK / gU    keep / undo everything
+    t          switch tree / list
     R          check the disk now
+    ?          show every key
     q          close
+
+The `panel_tree` and `panel_list` keymaps (and `:Agentdiff panel tree|list`)
+toggle their view and switch from the other one. Position, size, default
+view and icons are |agentdiff-options| `panel`.
+
+The panel window only shows the panel ('winfixbuf'): `:edit` there fails.
+Files opened from it, and the navigation actions run from it, open in an
+editing window: the one you came from, another file window, or a new split
+beside the panel.
 
 ==============================================================================
 8. EVENTS AND STATUSLINE                             *agentdiff-events*
@@ -317,6 +347,25 @@ them.
     AgentdiffConflict   changes overlapping unsaved edits    (DiagnosticWarn)
     AgentdiffTreeFile   file-tree mark of a changed file     (DiagnosticWarn)
     AgentdiffTreeDir    file-tree mark of a directory        (DiagnosticWarn)
+
+  Panel (|agentdiff-panel|):
+    AgentdiffPanelTitle        title                         (Title)
+    AgentdiffPanelCount        totals, folder counts         (Comment)
+    AgentdiffPanelDir          folder names                  (Directory)
+    AgentdiffPanelDirIcon      folder icons                  (Directory)
+    AgentdiffPanelFileIcon     built-in file icon            (Normal)
+    AgentdiffPanelFold         fold markers                  (Comment)
+    AgentdiffPanelPath         a file's folder, list view    (Comment)
+    AgentdiffPanelAdded        +n counts                     (Added)
+    AgentdiffPanelRemoved      −n counts                     (Removed)
+    AgentdiffPanelModified     status M                      (Changed)
+    AgentdiffPanelCreated      status A                      (Added)
+    AgentdiffPanelDeleted      status D                      (Removed)
+    AgentdiffPanelConflicted   status C                      (DiagnosticError)
+    AgentdiffPanelBinary       status B                      (Special)
+    AgentdiffPanelDeletedName  a deleted file's name         (strikethrough)
+    AgentdiffPanelHelp         key help                      (Comment)
+    AgentdiffPanelKey          keys in the help              (Special)
 
 ========================================================================================================================================================
 10. INTEGRATIONS                                *agentdiff-integrations*

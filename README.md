@@ -82,7 +82,8 @@ once when it starts.
 | Option | Default | Meaning |
 |---|---|---|
 | `attribution` | `"hooks"` | who changed a file: `"hooks"` (only what an agent hook reported) or `"writer"` (anything Neovim didn't write is the agent's); see [Attribution](#attribution) |
-| `keymaps` | `false` | table of `action = lhs` (`next`, `prev`, `next_file`, `prev_file`, `keep`, `undo`, `keep_file`, `undo_file`, `keep_all`, `undo_all`, `panel`, `view`, `overlay`, `resolve`); `keep`/`undo` are also mapped in visual mode |
+| `keymaps` | `false` | table of `action = lhs` (`next`, `prev`, `next_file`, `prev_file`, `keep`, `undo`, `keep_file`, `undo_file`, `keep_all`, `undo_all`, `panel`, `panel_tree`, `panel_list`, `view`, `overlay`, `resolve`); `keep`/`undo` are also mapped in visual mode |
+| `panel` | see [Panel](#panel) | `view` (`"tree"` or `"list"`), `position` (`"right"`, `"left"`, `"top"`, `"bottom"`), `size` (`40` columns/rows, or `"30%"` / `0.3` of the editor), `icons` (`true`) |
 | `poll_interval` | `1000` | ms between disk checks while Neovim is focused (`0` disables the timer) |
 | `settle` | `300` | ms an unclaimed change waits before it's confirmed as the agent's |
 | `claim_ttl` | `10000` | ms an unused claim stays valid |
@@ -113,7 +114,7 @@ Every action is a function on `require("agentdiff")`:
 | `keep_file()` / `undo_file()` | keep / undo every change in the current file |
 | `keep_all(opts)` / `undo_all(opts)` | every change in every file; asks first unless `{ force = true }` |
 | `resolve(choice)` | resolve a conflicted file: `"accept"` (the agent's changes, your other unsaved edits on top), `"agent"`, `"mine"` or `"compare"` (asks when nil). Keep and undo on a conflicted file do `"accept"` and `"mine"` |
-| `panel()` | toggle the changed-files panel |
+| `panel(opts)` | toggle the changed-files panel; `{ view = "tree" }` or `"list"` opens that view, closes it when it's showing, and switches from the other view |
 | `toggle_view()` | toggle inline overlay ↔ side-by-side diff for the current file |
 | `toggle_overlay()` | hide / show the overlay; nothing is kept or undone |
 | `claim(paths)` | the next disk changes to these paths are yours (for tools that write files) |
@@ -150,7 +151,7 @@ undoing a deletion restores the file.
 | `keep` / `undo` | the change under the cursor; with a range, only those lines |
 | `keep_file` / `undo_file` | every change in the current file |
 | `keep_all` / `undo_all` | every change in every file (asks first) |
-| `panel` | toggle the changed-files panel |
+| `panel` | `panel [tree\|list]`: toggle the changed-files panel, in a view |
 | `view` | toggle inline ↔ side-by-side |
 | `overlay` | hide / show the overlay |
 | `resolve` | resolve a conflicted file |
@@ -160,8 +161,58 @@ undoing a deletion restores the file.
 | `status` | show the pending summary |
 | `hooks` | `hooks install\|uninstall\|status [claude\|copilot\|all] [user\|project]`: manage agentdiff's hook in agent CLIs (default: `status`) |
 
-Panel keys: `<CR>`/`o` open at the first change · `K`/`U` keep/undo the file ·
-`gK`/`gU` keep/undo all · `R` refresh · `q` close.
+## Panel
+
+The changed-files panel shows every pending file as a **tree** (folders first,
+a folder holding only one folder compacted as `lua/agentdiff`, each folder
+with its total counts) or a **list** (file name, then its folder), with
+right-aligned `+added −removed` counts and the status letter (`M` modified,
+`A` created, `D` deleted, `B` binary, `C` conflicted).
+
+```
+ 󰚩 Agent changes         5 files  +5 −2
+
+  docs                            −1
+     gone.md                    −1  D
+  lua/agentdiff                +4 −1
+    ui                         +2 −1
+       icons.lua                +2  A
+       panel.lua                −1  M
+     init.lua                   +2  M
+   README.md                    +1  M
+
+ ? keys
+```
+
+| Key | Action |
+|---|---|
+| `<CR>` / `o` | open the file at its first change; on a folder, fold / unfold it |
+| `K` / `U` | keep / undo the file |
+| `gK` / `gU` | keep / undo everything |
+| `t` | switch tree ↔ list |
+| `R` | check the disk now |
+| `?` | show every key |
+| `q` | close |
+
+```lua
+require("agentdiff").setup({
+  panel = {
+    view = "tree",       -- or "list": the view panel() opens first
+    position = "right",  -- "left", "top", "bottom"
+    size = 40,           -- columns (or rows at top/bottom); "30%" or 0.3 for a share of the editor
+    icons = true,        -- mini.icons or nvim-web-devicons when installed, built-in Nerd Font glyphs otherwise
+  },
+  keymaps = { panel_tree = "<leader>rp", panel_list = "<leader>rP" },
+})
+```
+
+`panel_tree` and `panel_list` toggle their view and switch from the other one:
+with the tree open, `panel_list` shows the list; pressing it again closes the
+panel. `panel` toggles the last view used.
+
+The panel window only ever shows the panel (`winfixbuf`). Files opened from it,
+and the navigation actions run from it, open in an editing window: the window
+you came from, another file window, or a new split beside the panel.
 
 ## Integrations
 
@@ -207,6 +258,17 @@ Writing your own: see [docs/extending.md](docs/extending.md).
 | `AgentdiffConflict` | `DiagnosticWarn` | changes overlapping your unsaved edits |
 | `AgentdiffTreeFile` | `DiagnosticWarn` | file-tree mark of a file with pending changes |
 | `AgentdiffTreeDir` | `DiagnosticWarn` | file-tree mark of a directory containing one |
+| `AgentdiffPanelTitle` | `Title` | the panel title |
+| `AgentdiffPanelCount` | `Comment` | totals in the title, folder counts, "whole file" |
+| `AgentdiffPanelDir` / `AgentdiffPanelDirIcon` | `Directory` | folder names and icons |
+| `AgentdiffPanelFileIcon` | `Normal` | built-in file icon (icon plugins bring their own groups) |
+| `AgentdiffPanelFold` | `Comment` | fold markers |
+| `AgentdiffPanelPath` | `Comment` | the folder of a file in the list view |
+| `AgentdiffPanelAdded` / `AgentdiffPanelRemoved` | `Added` / `Removed` | `+n` / `−n` counts |
+| `AgentdiffPanelModified` / `Created` / `Deleted` | `Changed` / `Added` / `Removed` | status letters `M` / `A` / `D` |
+| `AgentdiffPanelConflicted` / `AgentdiffPanelBinary` | `DiagnosticError` / `Special` | status letters `C` / `B` |
+| `AgentdiffPanelDeletedName` | strikethrough | the name of a deleted file |
+| `AgentdiffPanelHelp` / `AgentdiffPanelKey` | `Comment` / `Special` | the key help |
 
 ## How it decides who changed what
 

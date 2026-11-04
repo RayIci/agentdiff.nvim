@@ -36,14 +36,14 @@ flowchart LR
 
 ## What's covered
 
-195 tests in 20 spec files.
+215 tests in 20 spec files.
 
 ```mermaid
 xychart-beta
     title "Tests per spec file"
-    x-axis [install, actions, staging, merge, views, detect, store, fixes, hooks, integrations, render, harness, journal, session, buffers, attribution, surface, smoke, api, layers]
-    y-axis "tests" 0 --> 25
-    bar [21, 19, 18, 17, 15, 14, 12, 11, 11, 9, 8, 8, 7, 6, 5, 5, 4, 2, 2, 1]
+    x-axis [views, install, actions, staging, merge, detect, store, fixes, hooks, integrations, render, harness, journal, session, buffers, attribution, surface, smoke, api, layers]
+    y-axis "tests" 0 --> 35
+    bar [31, 25, 19, 18, 17, 14, 12, 11, 11, 9, 8, 8, 7, 6, 5, 5, 4, 2, 2, 1]
 ```
 
 ```mermaid
@@ -51,7 +51,7 @@ pie showData
     title Tests by area
     "Keep, undo, navigation" : 19
     "Diff and merge3" : 17
-    "Panel, views, status, tree" : 15
+    "Panel, views, status, tree" : 31
     "Detection, claims, git-guard" : 14
     "Store" : 12
     "Fixes from first use" : 11
@@ -63,7 +63,7 @@ pie showData
     "Integrations" : 9
     "Architecture guards and adapters" : 13
     "Agent hooks: journal, reporter, hooks mode" : 18
-    "Hook install, status, command" : 21
+    "Hook install, status, command, notice" : 25
     "Smoke and API docs" : 4
 ```
 
@@ -77,7 +77,7 @@ pie showData
 | `buffers_spec` | merging agent writes into unsaved buffers, conflicts and their resolutions |
 | `render_spec` | overlay geometry, untouched buffer text, highlights, hint position, hide/show |
 | `actions_spec` | navigation, keep and undo at every scope, undoing an undo, created/deleted/renamed files, partial ranges |
-| `views_spec` | panel, side-by-side, binary files, command, change event, status, `path_status` |
+| `views_spec` | the panel (tree and list views, folding, colours and icons, view toggling, position and size, the panel window never taken over), side-by-side, binary files, command, change event, status, `path_status` |
 | `staging_spec` | staging keeps (file, hunk, `commit -a`, created and deleted files, unstaging, the option), the startup check and committed deletions, keep and undo ending a conflict, reset |
 | `fixes_spec` | commit messages, ignored files, discards through git, windows never closed, the persisted toggle |
 | `api_spec` | every function and subcommand in the README exists, and the subcommand table matches the code |

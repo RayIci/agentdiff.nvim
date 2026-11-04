@@ -18,7 +18,7 @@ Each group ends with `make test`, `make fmt-check` and lua_ls clean, and is comm
 
 ## 4. Docs
 
-- [ ] 4.1 Document the panel views, keys, options, highlight groups and window behaviour in the README, `doc/agentdiff.txt` and `docs/review-ui.md`; verify the API doc tests, `:helptags` and Mermaid parsing
+- [x] 4.1 Document the panel views, keys, options, highlight groups and window behaviour in the README, `doc/agentdiff.txt` and `docs/review-ui.md`; verify the API doc tests, `:helptags` and Mermaid parsing
 
 ## Workflow follow-up
 
