@@ -84,6 +84,7 @@ describe("public surface", function()
         keymaps = false,
         max_file_size = 1024 * 1024,
         max_files = 20000,
+        panel = { view = "tree", position = "right", size = 40, icons = true },
         poll_interval = 1000,
         settle = 300,
       },
@@ -105,6 +106,14 @@ describe("public surface", function()
       "AgentdiffConflict",
       "AgentdiffTreeFile",
       "AgentdiffTreeDir",
+      "AgentdiffPanelTitle",
+      "AgentdiffPanelDir",
+      "AgentdiffPanelAdded",
+      "AgentdiffPanelRemoved",
+      "AgentdiffPanelModified",
+      "AgentdiffPanelCreated",
+      "AgentdiffPanelDeleted",
+      "AgentdiffPanelConflicted",
     }) do
       ok(next(vim.api.nvim_get_hl(0, { name = g })) ~= nil, g)
     end

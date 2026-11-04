@@ -45,7 +45,24 @@ function M.create(keys, api)
       end,
       "Undo all",
     },
-    panel = { api.panel, "Changed files panel" },
+    panel = {
+      function()
+        api.panel()
+      end,
+      "Changed files panel",
+    },
+    panel_tree = {
+      function()
+        api.panel({ view = "tree" })
+      end,
+      "Changed files (tree)",
+    },
+    panel_list = {
+      function()
+        api.panel({ view = "list" })
+      end,
+      "Changed files (list)",
+    },
     view = { api.toggle_view, "Toggle side-by-side" },
     overlay = { api.toggle_overlay, "Hide/show overlay" },
     resolve = {

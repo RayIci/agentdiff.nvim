@@ -15,12 +15,21 @@ local M = {}
 ---@field undo_file? string   undo every change in the current file
 ---@field keep_all? string    keep every change in every file
 ---@field undo_all? string    undo every change in every file
----@field panel? string       toggle the changed-files panel
+---@field panel? string       toggle the changed-files panel (last view used)
+---@field panel_tree? string  toggle the panel as a tree (switches from the list)
+---@field panel_list? string  toggle the panel as a list (switches from the tree)
 ---@field view? string        toggle inline / side-by-side for the current file
 ---@field overlay? string     hide / show the overlay
 ---@field resolve? string     resolve a conflicted file
 
+---@class AgentdiffPanelOptions
+---@field view "tree"|"list"                      the view the panel first opens in
+---@field position "right"|"left"|"top"|"bottom"  the edge it opens at
+---@field size integer|number|string              columns/rows (40), or a share of the editor (0.3, "30%")
+---@field icons boolean                           file and folder icons (mini.icons, nvim-web-devicons or built-in)
+
 ---@class AgentdiffOptions
+---@field panel AgentdiffPanelOptions     the changed-files panel
 ---@field keymaps AgentdiffKeymaps|false  mappings to create; false (default) creates none
 ---@field attribution string               who changed a file: "hooks" (default: what agent hooks report) or "writer" (anything Neovim didn't write)
 ---@field poll_interval integer           ms between disk checks while Neovim is focused
@@ -40,6 +49,7 @@ local M = {}
 M.defaults = {
   keymaps = false,
   attribution = "hooks",
+  panel = { view = "tree", position = "right", size = 40, icons = true },
   poll_interval = 1000,
   settle = 300,
   claim_ttl = 10000,
@@ -89,6 +99,8 @@ local keymap_fields = {
   "keep_all",
   "undo_all",
   "panel",
+  "panel_tree",
+  "panel_list",
   "view",
   "overlay",
   "resolve",
@@ -120,6 +132,25 @@ function M.resolve(opts)
   vim.validate("keep_on_stage", o.keep_on_stage, "boolean")
   vim.validate("hint", o.hint, "boolean")
   vim.validate("auto_start", o.auto_start, "boolean")
+  vim.validate("panel", o.panel, "table")
+  local p = o.panel
+  if p.view ~= "tree" and p.view ~= "list" then
+    error(('agentdiff: panel.view must be "tree" or "list", got %s'):format(vim.inspect(p.view)))
+  end
+  if not vim.tbl_contains({ "right", "left", "top", "bottom" }, p.position) then
+    error(
+      ("agentdiff: panel.position must be right, left, top or bottom, got %s"):format(vim.inspect(p.position))
+    )
+  end
+  local pct = type(p.size) == "string" and tonumber(p.size:match("^(%d+)%%$"))
+  if not ((type(p.size) == "number" and p.size > 0) or (pct and pct > 0 and pct <= 100)) then
+    error(
+      ('agentdiff: panel.size must be a number of columns/rows, a fraction or "N%%", got %s'):format(
+        vim.inspect(p.size)
+      )
+    )
+  end
+  vim.validate("panel.icons", p.icons, "boolean")
   if type(o.keymaps) == "table" then
     for k, v in pairs(o.keymaps) do
       if not vim.tbl_contains(keymap_fields, k) then

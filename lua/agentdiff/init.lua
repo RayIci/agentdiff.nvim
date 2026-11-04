@@ -195,8 +195,19 @@ M.resolve = resolve_mod.resolve
 
 -- Views -----------------------------------------------------------------------
 
-function M.panel()
-  require("agentdiff.ui.panel").toggle()
+---Toggle the changed-files panel. `opts.view` ("tree" or "list"): open in that
+---view, close when it already shows it, switch when it shows the other one.
+---Without a view: toggle in the last view used (initially `panel.view`).
+---@param opts? { view: "tree"|"list"? }
+function M.panel(opts)
+  local view = opts and opts.view
+  if view ~= nil and view ~= "tree" and view ~= "list" then
+    return util.notify(
+      ("agentdiff: panel view must be tree or list, got '%s'"):format(view),
+      vim.log.levels.ERROR
+    )
+  end
+  require("agentdiff.ui.panel").toggle(view)
 end
 
 function M.toggle_view()
@@ -331,6 +342,7 @@ M._test = {
   reset = function()
     M.stop()
     hooks_mod.reset_notice()
+    require("agentdiff.ui.panel").reset()
     vim.api.nvim_clear_autocmds({ group = global_group })
     pcall(vim.api.nvim_del_user_command, "Agentdiff")
   end,

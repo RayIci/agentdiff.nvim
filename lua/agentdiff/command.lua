@@ -40,8 +40,8 @@ function M.subcommands(api)
     undo_all = function()
       api.undo_all()
     end,
-    panel = function()
-      api.panel()
+    panel = function(_, args)
+      api.panel({ view = args[1] })
     end,
     view = function()
       api.toggle_view()
@@ -96,6 +96,9 @@ end
 ---argument position.
 ---@type table<string, fun(): string[][]>
 M.arguments = {
+  panel = function()
+    return { { "tree", "list" } }
+  end,
   hooks = function()
     local names = require("agentdiff.harness").names()
     table.insert(names, 1, "all")

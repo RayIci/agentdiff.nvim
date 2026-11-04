@@ -12,17 +12,58 @@ local function scene(before, after, opts)
   return agentdiff
 end
 
+---Panel rows as "text | right" strings.
+local function panel_rows()
+  local panel = require("agentdiff.ui.panel")
+  local win = assert(panel.win(), "panel open")
+  local buf = vim.api.nvim_win_get_buf(win)
+  local rows = {}
+  local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+  local marks = vim.api.nvim_buf_get_extmarks(buf, panel.ns, 0, -1, { details = true })
+  for i, l in ipairs(lines) do
+    local right = {}
+    for _, m in ipairs(marks) do
+      if m[2] == i - 1 and m[4].virt_text then
+        for _, c in ipairs(m[4].virt_text) do
+          right[#right + 1] = c[1]
+        end
+      end
+    end
+    local r = vim.trim(table.concat(right))
+    rows[i] = r ~= "" and (l .. " | " .. r) or l
+  end
+  return rows
+end
+
+---Put the panel cursor on the first row containing `text`.
+local function panel_goto(text)
+  local panel = require("agentdiff.ui.panel")
+  local win = assert(panel.win())
+  local buf = vim.api.nvim_win_get_buf(win)
+  for i, l in ipairs(vim.api.nvim_buf_get_lines(buf, 0, -1, false)) do
+    if l:find(text, 1, true) then
+      vim.api.nvim_set_current_win(win)
+      vim.api.nvim_win_set_cursor(win, { i, 0 })
+      return i
+    end
+  end
+  error("no panel row with " .. text)
+end
+
+local plain = { panel = { icons = false } }
+
 describe("panel", function()
   it("lists files with status and counts (Panel lists counts)", function()
     local agentdiff = scene(
       { ["a.lua"] = "1\n2\n4\n" },
-      { ["a.lua"] = "1\nX\nY\nZ\n4\n", ["b.lua"] = H.numbered(20) }
+      { ["a.lua"] = "1\nX\nY\nZ\n4\n", ["b.lua"] = H.numbered(20) },
+      plain
     )
     agentdiff.panel()
-    local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
-    ok(vim.tbl_contains(lines, "M a.lua  +3 −1"), vim.inspect(lines))
-    ok(vim.tbl_contains(lines, "A b.lua  +20 −0"), vim.inspect(lines))
-    eq("agentdiff  2 files · 2 changes", lines[1])
+    local rows = panel_rows()
+    ok(vim.tbl_contains(rows, "   a.lua | +3 −1  M"), vim.inspect(rows))
+    ok(vim.tbl_contains(rows, "   b.lua | +20  A"), vim.inspect(rows))
+    eq(" Agent changes | 2 files  +23 −1", rows[1])
   end)
 
   it("opens a file at its first change (Open from the panel)", function()
@@ -32,13 +73,7 @@ describe("panel", function()
     )
     agentdiff.panel()
     local panel_win = vim.api.nvim_get_current_win()
-    local row
-    for i, l in ipairs(vim.api.nvim_buf_get_lines(0, 0, -1, false)) do
-      if l:find("a.lua", 1, true) then
-        row = i
-      end
-    end
-    vim.api.nvim_win_set_cursor(0, { row, 0 })
+    panel_goto("a.lua")
     vim.api.nvim_feedkeys(vim.keycode("<CR>"), "x", false)
     ok(vim.api.nvim_get_current_win() ~= panel_win, "left the panel")
     eq("a.lua", vim.fn.expand("%:t"))
@@ -51,16 +86,9 @@ describe("panel", function()
       { ["a.lua"] = "A\n", ["b.lua"] = "B\n" }
     )
     agentdiff.panel()
-    local function goto_file(name)
-      for i, l in ipairs(vim.api.nvim_buf_get_lines(0, 0, -1, false)) do
-        if l:find(" " .. name, 1, true) then
-          vim.api.nvim_win_set_cursor(0, { i, 0 })
-        end
-      end
-    end
-    goto_file("a.lua")
+    panel_goto("a.lua")
     vim.api.nvim_feedkeys("K", "x", false)
-    goto_file("b.lua")
+    panel_goto("b.lua")
     vim.api.nvim_feedkeys("U", "x", false)
     H.poll()
     eq({}, H.pending())
@@ -69,13 +97,214 @@ describe("panel", function()
   end)
 
   it("updates when pending changes change", function()
-    local agentdiff = scene({ ["a.lua"] = "a\n" }, { ["a.lua"] = "A\n" })
+    local agentdiff = scene({ ["a.lua"] = "a\n" }, { ["a.lua"] = "A\n" }, plain)
     agentdiff.panel()
-    local buf = vim.api.nvim_get_current_buf()
     H.write("c.lua", "new\n")
     H.poll()
-    local text = table.concat(vim.api.nvim_buf_get_lines(buf, 0, -1, false), "\n")
-    ok(text:find("A c.lua", 1, true), text)
+    ok(vim.tbl_contains(panel_rows(), "   c.lua | +1  A"), vim.inspect(panel_rows()))
+  end)
+
+  it("shows a tree with compacted, collapsible folders (Tree view)", function()
+    local agentdiff = scene({ ["README.md"] = "r\n", ["lua/agentdiff/a.lua"] = "a\n" }, {
+      ["README.md"] = "r\nR\n",
+      ["lua/agentdiff/a.lua"] = "A\n",
+      ["lua/agentdiff/ui/b.lua"] = "b\nb\n",
+    }, plain)
+    agentdiff.panel({ view = "tree" })
+    eq({
+      " Agent changes | 3 files  +4 −1",
+      "",
+      " ▾ lua/agentdiff | +3 −1",
+      "   ▾ ui | +2",
+      "       b.lua | +2  A",
+      "     a.lua | +1 −1  M",
+      "   README.md | +1  M",
+      "",
+      " ? keys",
+    }, panel_rows())
+    panel_goto("ui")
+    vim.api.nvim_feedkeys(vim.keycode("<CR>"), "x", false)
+    eq("   ▸ ui | +2", panel_rows()[4])
+    eq("     a.lua | +1 −1  M", panel_rows()[5], "folded")
+    eq("ui", vim.trim(vim.api.nvim_get_current_line()):sub(-2), "cursor stays on the folder")
+    vim.api.nvim_feedkeys("o", "x", false)
+    eq("       b.lua | +2  A", panel_rows()[5], "unfolded")
+    -- keep from the tree
+    panel_goto("a.lua")
+    vim.api.nvim_feedkeys("K", "x", false)
+    H.poll()
+    eq(2, #H.pending())
+  end)
+
+  it("shows a list with each file's folder (List view)", function()
+    local agentdiff = scene({ ["lua/a.lua"] = "a\n" }, { ["lua/a.lua"] = "A\n", ["top.lua"] = "t\n" }, plain)
+    agentdiff.panel({ view = "list" })
+    local rows = panel_rows()
+    ok(vim.tbl_contains(rows, " a.lua  lua | +1 −1  M"), vim.inspect(rows))
+    ok(vim.tbl_contains(rows, " top.lua | +1  A"), vim.inspect(rows))
+    panel_goto("top.lua")
+    vim.api.nvim_feedkeys("U", "x", false)
+    H.poll()
+    eq({ "modified lua/a.lua +1 -1 #1" }, H.pending())
+  end)
+
+  it("colours rows and shows icons (Colours and icons)", function()
+    local agentdiff = scene({ ["src/a.lua"] = "a\n" }, { ["src/a.lua"] = "A\n" })
+    agentdiff.panel()
+    local panel = require("agentdiff.ui.panel")
+    local buf = vim.api.nvim_win_get_buf(panel.win())
+    local groups = {}
+    for _, m in ipairs(vim.api.nvim_buf_get_extmarks(buf, panel.ns, 0, -1, { details = true })) do
+      if m[4].hl_group then
+        groups[m[4].hl_group] = true
+      end
+      for _, c in ipairs(m[4].virt_text or {}) do
+        groups[c[2]] = true
+      end
+    end
+    for _, g in ipairs({
+      "AgentdiffPanelTitle",
+      "AgentdiffPanelDir",
+      "AgentdiffPanelAdded",
+      "AgentdiffPanelRemoved",
+      "AgentdiffPanelModified",
+      "AgentdiffPanelFileIcon",
+      "AgentdiffPanelDirIcon",
+    }) do
+      ok(groups[g], g .. " used: " .. vim.inspect(vim.tbl_keys(groups)))
+    end
+    local icons = require("agentdiff.ui.icons")
+    local text = table.concat(panel_rows(), "\n")
+    ok(text:find(icons.glyphs.file, 1, true) and text:find(icons.glyphs.dir_open, 1, true), text)
+  end)
+
+  it("uses mini.icons when it is set up", function()
+    _G.MiniIcons = {
+      get = function(kind, name)
+        return kind == "file" and ("X" .. name:sub(-3)) or nil, "MiniIconsBlue"
+      end,
+    }
+    local ok_, err = pcall(function()
+      local agentdiff = scene({ ["a.lua"] = "a\n" }, { ["a.lua"] = "A\n" })
+      agentdiff.panel()
+      ok(table.concat(panel_rows(), "\n"):find("Xlua a.lua", 1, true), vim.inspect(panel_rows()))
+    end)
+    _G.MiniIcons = nil
+    assert(ok_, err)
+  end)
+
+  it("shows every key with ?", function()
+    local agentdiff = scene({ ["a.lua"] = "a\n" }, { ["a.lua"] = "A\n" }, plain)
+    agentdiff.panel()
+    vim.api.nvim_feedkeys("?", "x", false)
+    local text = table.concat(panel_rows(), "\n")
+    ok(text:find("gK/gU keep/undo all", 1, true) and text:find("t tree/list", 1, true), text)
+  end)
+end)
+
+describe("panel views", function()
+  local panel = function()
+    return require("agentdiff.ui.panel")
+  end
+
+  it("toggles a view and switches between views (Toggle a view / Switch views)", function()
+    local agentdiff = scene({ ["a.lua"] = "a\n" }, { ["a.lua"] = "A\n" })
+    agentdiff.panel({ view = "tree" })
+    eq("tree", panel().view())
+    agentdiff.panel({ view = "list" })
+    eq("list", panel().view(), "switched, still open")
+    agentdiff.panel({ view = "list" })
+    eq(nil, panel().view(), "closed")
+    agentdiff.panel()
+    eq("list", panel().view(), "reopens in the last view")
+    vim.api.nvim_feedkeys("t", "x", false)
+    eq("tree", panel().view(), "t switches")
+    agentdiff.panel()
+    eq(nil, panel().view())
+  end)
+
+  it("opens in the configured view and rejects unknown ones", function()
+    local agentdiff = scene({ ["a.lua"] = "a\n" }, { ["a.lua"] = "A\n" }, { panel = { view = "list" } })
+    agentdiff.panel()
+    eq("list", panel().view())
+    agentdiff.panel({ view = "grid" })
+    eq("list", panel().view(), "unchanged")
+  end)
+
+  it("maps panel_tree and panel_list, and :Agentdiff panel tree|list", function()
+    scene(
+      { ["a.lua"] = "a\n" },
+      { ["a.lua"] = "A\n" },
+      { keymaps = { panel_tree = "<F7>", panel_list = "<F8>" } }
+    )
+    vim.api.nvim_feedkeys(vim.keycode("<F7>"), "x", false)
+    eq("tree", panel().view())
+    vim.api.nvim_feedkeys(vim.keycode("<F8>"), "x", false)
+    eq("list", panel().view())
+    vim.api.nvim_feedkeys(vim.keycode("<F8>"), "x", false)
+    eq(nil, panel().view())
+    vim.cmd("Agentdiff panel tree")
+    eq("tree", panel().view())
+    vim.cmd("Agentdiff panel")
+    eq(nil, panel().view())
+    local command = require("agentdiff.command")
+    eq(
+      { "list", "tree" },
+      vim.fn.sort(command.complete(require("agentdiff").subcommands, "", "Agentdiff panel "))
+    )
+  end)
+end)
+
+describe("panel position and size", function()
+  local function panel_win(opts)
+    local agentdiff = scene({ ["a.lua"] = "a\n" }, { ["a.lua"] = "A\n" }, { panel = opts })
+    H.edit("a.lua")
+    agentdiff.panel()
+    return require("agentdiff.ui.panel").win()
+  end
+
+  it("opens at the right edge, 40 columns wide, by default", function()
+    local win = panel_win(nil)
+    eq(40, vim.api.nvim_win_get_width(win))
+    eq(vim.o.columns - 40, vim.api.nvim_win_get_position(win)[2])
+  end)
+
+  it("opens at the left edge with a share of the width (Position and size)", function()
+    local win = panel_win({ position = "left", size = "25%" })
+    eq(0, vim.api.nvim_win_get_position(win)[2])
+    eq(math.floor(vim.o.columns * 0.25), vim.api.nvim_win_get_width(win))
+  end)
+
+  it("opens at the top or bottom with a fixed or fractional height", function()
+    local win = panel_win({ position = "top", size = 8 })
+    eq(8, vim.api.nvim_win_get_height(win))
+    eq(vim.o.columns, vim.api.nvim_win_get_width(win))
+    eq(0, vim.api.nvim_win_get_position(win)[1])
+    require("agentdiff")._test.reset()
+    local w2 = panel_win({ position = "bottom", size = 0.5 })
+    eq(math.floor((vim.o.lines - vim.o.cmdheight - 1) * 0.5), vim.api.nvim_win_get_height(w2))
+    ok(vim.api.nvim_win_get_position(w2)[1] > 0, "at the bottom")
+  end)
+
+  it("keeps a share of the editor when it is resized", function()
+    local win = panel_win({ size = "50%" })
+    local cols = vim.o.columns
+    vim.o.columns = cols - 20
+    vim.api.nvim_exec_autocmds("VimResized", {})
+    eq(math.floor((cols - 20) * 0.5), vim.api.nvim_win_get_width(win))
+    vim.o.columns = cols
+  end)
+
+  it("rejects invalid options", function()
+    for _, p in ipairs({
+      { view = "grid" },
+      { position = "middle" },
+      { size = "half" },
+      { size = -3 },
+      { size = "0%" },
+    }) do
+      ok(not pcall(require("agentdiff").setup, { auto_start = false, panel = p }), vim.inspect(p))
+    end
   end)
 end)
 
@@ -253,11 +482,7 @@ describe("panel window", function()
   local function panel_with(agentdiff)
     agentdiff.panel()
     local win = vim.api.nvim_get_current_win()
-    for i, l in ipairs(vim.api.nvim_buf_get_lines(0, 0, -1, false)) do
-      if l:find("a.lua", 1, true) then
-        vim.api.nvim_win_set_cursor(win, { i, 0 })
-      end
-    end
+    panel_goto("a.lua")
     return win, vim.api.nvim_win_get_buf(win)
   end
 
