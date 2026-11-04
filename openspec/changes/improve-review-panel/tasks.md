@@ -4,7 +4,7 @@ Each group ends with `make test`, `make fmt-check` and lua_ls clean, and is comm
 
 ## 1. Window ownership
 
-- [ ] 1.1 Add `ui/windows.lua` (editing window, new split beside the panel) and make `navigate`'s jump use it (D6); open the panel with `winfixbuf` (D5); verify "Files never open in the panel" (open from the panel, `next` from the panel, `:edit` in the panel, the panel as the only window)
+- [x] 1.1 Add `ui/windows.lua` (editing window, new split beside the panel) and make `navigate`'s jump use it (D6); open the panel with `winfixbuf` (D5); verify "Files never open in the panel" (open from the panel, `next` from the panel, `:edit` in the panel, the panel as the only window)
 
 ## 2. Options, views and toggling
 

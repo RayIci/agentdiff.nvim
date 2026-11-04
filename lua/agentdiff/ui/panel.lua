@@ -8,6 +8,7 @@ local M = {}
 
 local review_state = require("agentdiff.core.state")
 local session = require("agentdiff.core.session")
+local windows = require("agentdiff.ui.windows")
 
 ---@type { buf: integer?, win: integer?, paths: table<integer, string>, au: integer? }
 local state = { buf = nil, win = nil, paths = {}, au = nil }
@@ -82,10 +83,7 @@ local function on_file(fn)
   if not p then
     return
   end
-  vim.cmd.wincmd("p")
-  if state.win and vim.api.nvim_get_current_win() == state.win then
-    vim.cmd("rightbelow vsplit")
-  end
+  windows.focus_editing()
   fn(p)
 end
 
@@ -109,6 +107,7 @@ function M.open()
     relativenumber = false,
     signcolumn = "no",
     winfixwidth = true,
+    winfixbuf = true,
     wrap = false,
   }) do
     vim.wo[state.win][k] = v

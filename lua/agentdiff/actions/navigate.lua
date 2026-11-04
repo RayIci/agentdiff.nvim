@@ -4,6 +4,7 @@ local M = {}
 
 local common = require("agentdiff.actions.common")
 local hint = require("agentdiff.ui.hint")
+local windows = require("agentdiff.ui.windows")
 local positions = require("agentdiff.core.positions")
 local session = require("agentdiff.core.session")
 local state = require("agentdiff.core.state")
@@ -13,6 +14,8 @@ local util = require("agentdiff.core.util")
 ---@param rel string
 ---@param row integer 0-based
 local function jump(s, rel, row)
+  -- never edit in the panel or another special window
+  windows.focus_editing()
   local cur = session.rel_of_buf(s, vim.api.nvim_get_current_buf())
   if cur ~= rel then
     vim.cmd.edit(vim.fn.fnameescape(session.abs(s, rel)))

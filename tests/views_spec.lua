@@ -248,3 +248,73 @@ describe("path status", function()
     eq("DiagnosticWarn", vim.api.nvim_get_hl(0, { name = "AgentdiffTreeDir" }).link)
   end)
 end)
+
+describe("panel window", function()
+  local function panel_with(agentdiff)
+    agentdiff.panel()
+    local win = vim.api.nvim_get_current_win()
+    for i, l in ipairs(vim.api.nvim_buf_get_lines(0, 0, -1, false)) do
+      if l:find("a.lua", 1, true) then
+        vim.api.nvim_win_set_cursor(win, { i, 0 })
+      end
+    end
+    return win, vim.api.nvim_win_get_buf(win)
+  end
+
+  it("opens files in an editing window, never the panel (Files never open in the panel)", function()
+    local agentdiff = scene(
+      { ["a.lua"] = "a\n", ["b.lua"] = "b\n" },
+      { ["a.lua"] = "A\n", ["b.lua"] = "B\n" }
+    )
+    H.edit("b.lua")
+    local file_win = vim.api.nvim_get_current_win()
+    local pwin, pbuf = panel_with(agentdiff)
+    vim.api.nvim_feedkeys("o", "x", false)
+    eq(file_win, vim.api.nvim_get_current_win())
+    eq("a.lua", vim.fn.expand("%:t"))
+    eq(pbuf, vim.api.nvim_win_get_buf(pwin), "the panel still shows the panel")
+    -- navigation from inside the panel
+    vim.api.nvim_set_current_win(pwin)
+    agentdiff.next()
+    ok(vim.api.nvim_get_current_win() ~= pwin, "left the panel")
+    eq(pbuf, vim.api.nvim_win_get_buf(pwin))
+    -- :edit in the panel fails
+    vim.api.nvim_set_current_win(pwin)
+    ok(not pcall(vim.cmd.edit, H.path("b.lua")), ":edit refused in the panel")
+    eq(pbuf, vim.api.nvim_win_get_buf(pwin))
+  end)
+
+  it("opens a split when the panel is the only window left", function()
+    local agentdiff = scene({ ["a.lua"] = "a\n" }, { ["a.lua"] = "A\n" })
+    local pwin, pbuf = panel_with(agentdiff)
+    for _, w in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+      if w ~= pwin then
+        vim.api.nvim_win_close(w, true)
+      end
+    end
+    eq(1, #vim.api.nvim_tabpage_list_wins(0))
+    vim.api.nvim_feedkeys(vim.keycode("<CR>"), "x", false)
+    eq(2, #vim.api.nvim_tabpage_list_wins(0))
+    ok(vim.api.nvim_get_current_win() ~= pwin, "a new window")
+    eq("a.lua", vim.fn.expand("%:t"))
+    eq(pbuf, vim.api.nvim_win_get_buf(pwin))
+  end)
+
+  it("skips special windows like a side-by-side baseline", function()
+    local agentdiff = scene({ ["a.lua"] = "a\nb\n" }, { ["a.lua"] = "a\nB\n" })
+    H.edit("a.lua")
+    local file_win = vim.api.nvim_get_current_win()
+    agentdiff.toggle_view() -- opens a nofile baseline window
+    local base_win
+    for _, w in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+      if w ~= file_win then
+        base_win = w
+      end
+    end
+    vim.api.nvim_set_current_win(base_win)
+    local pwin = panel_with(agentdiff)
+    vim.api.nvim_feedkeys("o", "x", false)
+    eq(file_win, vim.api.nvim_get_current_win())
+    ok(pwin ~= file_win)
+  end)
+end)
