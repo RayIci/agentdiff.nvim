@@ -28,25 +28,15 @@ The `attribution` option SHALL choose how disk changes get their author, for eve
 - **WHEN** the host calls `setup({ attribution = "magic" })`
 - **THEN** setup reports an error naming the valid modes
 
-### Requirement: Hooks attribution
-In the hooks mode, a change Neovim did not make SHALL be the agent's only when an agent hook reported that file shortly before or after the change. Every other such change SHALL be folded into the baseline without becoming pending. Neovim's own writes, claims, staging-keeps and conflicts SHALL behave as in the writer mode. When review starts in the hooks mode and no agent hook is installed for any harness, the user SHALL be told once per Neovim instance how to install one or how to switch to the writer mode.
+## ADDED Requirements
 
-#### Scenario: Reported agent edit
-- **WHEN** the hooks mode is on and Claude Code edits `src/a.lua` with its Edit tool
-- **THEN** the edit is shown as a pending change
-
-#### Scenario: Generated file
-- **WHEN** the hooks mode is on and a code generator in another pane rewrites `src/gen.lua`
-- **THEN** nothing is shown as pending
-
-#### Scenario: Agent shell edit
-- **WHEN** the hooks mode is on and the agent changes a file by running `sed -i` in its shell
-- **THEN** nothing is shown as pending, as in VS Code
-
-#### Scenario: A report covers one change
-- **WHEN** a reported edit has been shown as pending and later a script outside Neovim changes the same file
-- **THEN** the script's change is not attributed to the agent
+### Requirement: Missing hook notice
+When review starts in the hooks mode and no agent hook is installed for any harness, at user scope or for the project, the user SHALL be told once per Neovim instance how to install one or how to switch to the writer mode.
 
 #### Scenario: No hook installed
 - **WHEN** review starts in the hooks mode and neither Claude Code nor Copilot CLI has agentdiff's hook installed, at user scope or for the project
-- **THEN** a notice says to run `:Agentdiff hooks install` or set `attribution = "writer"`, and it is not repeated when another project is opened in the same Neovim
+- **THEN** a notice says to run `:Agentdiff hooks install` or set `attribution = "writer"`, and it is not repeated when review restarts in the same Neovim
+
+#### Scenario: Hook installed
+- **WHEN** review starts in the hooks mode and agentdiff's hook is installed for Claude Code at user scope or for Copilot CLI in the project
+- **THEN** no notice is shown

@@ -17,10 +17,10 @@ Agent change review SHALL be provided by a self-contained `agentdiff` plugin mod
 - **THEN** the plugin defines no mappings, and every action is still available through its Lua API and command
 
 ### Requirement: Agent changes become pending reviews
-In the writer attribution mode (the default), any change to a file in the project that Neovim did not make SHALL be treated as an agent change. A file's pending changes SHALL be exactly the difference between its baseline (the last agreed content) and its current content, and SHALL stay pending until kept or undone. Detection SHALL need no configuration of the agent.
+In the writer attribution mode (`attribution = "writer"`), any change to a file in the project that Neovim did not make SHALL be treated as an agent change. A file's pending changes SHALL be exactly the difference between its baseline (the last agreed content) and its current content, and SHALL stay pending until kept or undone. Detection in this mode SHALL need no configuration of the agent.
 
 #### Scenario: Agent edit from another tmux pane
-- **WHEN** Claude Code running in another tmux pane edits `lua/foo.lua`
+- **WHEN** the writer mode is on and Claude Code running in another tmux pane edits `lua/foo.lua`
 - **THEN** that edit appears in Neovim as a pending change of `lua/foo.lua`
 
 #### Scenario: File never opened in Neovim
@@ -427,11 +427,11 @@ The plugin SHALL ship integrations with other plugins as separate modules under 
 - **THEN** every replaced file is claimed, grug-far's edit proceeds, and none of the files is shown as a pending change
 
 ### Requirement: Attribution modes
-The `attribution` option SHALL choose how disk changes get their author, for every project: `"writer"` (the default; anything Neovim didn't make is the agent's) or `"hooks"` (only what an agent hook reported is the agent's). An unknown value SHALL be rejected by `setup()`.
+The `attribution` option SHALL choose how disk changes get their author, for every project: `"hooks"` (the default; only what an agent hook reported is the agent's) or `"writer"` (anything Neovim didn't make is the agent's). An unknown value SHALL be rejected by `setup()`.
 
 #### Scenario: Default mode
 - **WHEN** the host calls `setup()` without `attribution`
-- **THEN** review behaves as in the writer mode
+- **THEN** review behaves as in the hooks mode
 
 #### Scenario: Unknown mode
 - **WHEN** the host calls `setup({ attribution = "magic" })`
@@ -506,3 +506,14 @@ The Copilot CLI adapter SHALL report the files edited by Copilot CLI's file tool
 #### Scenario: Status after an edit
 - **WHEN** the hook is installed and the agent has edited a file
 - **THEN** `:Agentdiff hooks status` shows where the hook is installed and the time of the last report
+
+### Requirement: Missing hook notice
+When review starts in the hooks mode and no agent hook is installed for any harness, at user scope or for the project, the user SHALL be told once per Neovim instance how to install one or how to switch to the writer mode.
+
+#### Scenario: No hook installed
+- **WHEN** review starts in the hooks mode and neither Claude Code nor Copilot CLI has agentdiff's hook installed, at user scope or for the project
+- **THEN** a notice says to run `:Agentdiff hooks install` or set `attribution = "writer"`, and it is not repeated when review restarts in the same Neovim
+
+#### Scenario: Hook installed
+- **WHEN** review starts in the hooks mode and agentdiff's hook is installed for Claude Code at user scope or for Copilot CLI in the project
+- **THEN** no notice is shown

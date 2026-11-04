@@ -16,7 +16,7 @@ The hooks attribution mode reviews exactly what agents report through their hook
 <!-- none -->
 
 ### Modified Capabilities
-- `agent-change-review`: the default attribution mode is the hooks mode, and a missing hook is announced; "Agent changes become pending reviews" describes the writer mode only.
+- `agent-change-review`: the default attribution mode is the hooks mode; "Agent changes become pending reviews" describes the writer mode only; a new "Missing hook notice" requirement.
 
 ## Impact
 

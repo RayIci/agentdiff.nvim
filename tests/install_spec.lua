@@ -282,7 +282,7 @@ describe("missing hook notice", function()
     eq(1, #notices)
   end)
 
-  it("stays quiet when a hook is installed", function()
+  it("stays quiet when a hook is installed (Hook installed)", function()
     require("agentdiff.harness.claude").install("user", {
       home = vim.env.HOME,
       root = H.project,
