@@ -92,6 +92,41 @@ function M.uninstall(name, scope)
   return report("uninstall", name, scope)
 end
 
+---True when any harness has agentdiff's hook, at user scope or for the
+---current project.
+---@return boolean
+function M.any_installed()
+  local o = M.opts()
+  for _, n in ipairs(harness.names()) do
+    local ok, st = pcall(harness.get(n).status, o)
+    if ok and st and st.installed then
+      return true
+    end
+  end
+  return false
+end
+
+local noticed = false
+
+---In the hooks mode with no hook installed anywhere, nothing would ever be
+---reviewed: say so, once per Neovim instance.
+function M.notice_missing()
+  if noticed or config.options.attribution ~= "hooks" or M.any_installed() then
+    return
+  end
+  noticed = true
+  util.notify(
+    'agentdiff: attribution is "hooks" but no agent hook is installed, so nothing will be reviewed.\n'
+      .. 'Run :Agentdiff hooks install, or set attribution = "writer" to review every change Neovim didn\'t make.',
+    vim.log.levels.WARN
+  )
+end
+
+---Forget that the notice was shown (tests).
+function M.reset_notice()
+  noticed = false
+end
+
 ---@class AgentdiffHookStatus
 ---@field installed boolean
 ---@field where string[]      configuration files holding the hook

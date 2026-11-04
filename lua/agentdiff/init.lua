@@ -66,6 +66,7 @@ function M.start()
   end
   store = onoff.fresh_store(store, root, opts, epoch)
   local s = session.new(root, store, opts)
+  vim.schedule(hooks_mod.notice_missing)
   buffers.attach(s)
   hint.attach(s)
   detect.start(s)
@@ -329,6 +330,7 @@ M._test = {
   ---Stop everything and forget the session (between tests).
   reset = function()
     M.stop()
+    hooks_mod.reset_notice()
     vim.api.nvim_clear_autocmds({ group = global_group })
     pcall(vim.api.nvim_del_user_command, "Agentdiff")
   end,

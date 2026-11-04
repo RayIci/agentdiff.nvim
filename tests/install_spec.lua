@@ -242,3 +242,71 @@ describe("hooks command", function()
     eq({}, command.complete(subs, "", "Agentdiff keep "))
   end)
 end)
+
+describe("missing hook notice", function()
+  local notices, orig
+
+  before_each(function()
+    notices = {}
+    orig = vim.notify
+    vim.notify = function(msg, level)
+      if tostring(msg):find("no agent hook is installed", 1, true) then
+        notices[#notices + 1] = { msg = msg, level = level }
+      end
+    end
+  end)
+
+  after_each(function()
+    vim.notify = orig
+  end)
+
+  ---Let scheduled callbacks run.
+  local function settle()
+    vim.wait(50, function()
+      return false
+    end)
+  end
+
+  it("says once how to install a hook (No hook installed)", function()
+    local agentdiff = H.start({ attribution = "hooks" })
+    settle()
+    eq(1, #notices)
+    eq(vim.log.levels.WARN, notices[1].level)
+    ok(notices[1].msg:find(":Agentdiff hooks install", 1, true), notices[1].msg)
+    ok(notices[1].msg:find('attribution = "writer"', 1, true), notices[1].msg)
+    -- another project in the same Neovim: not repeated
+    agentdiff.stop()
+    agentdiff.start()
+    ok(agentdiff._test.wait_ready(5000), "ready")
+    settle()
+    eq(1, #notices)
+  end)
+
+  it("stays quiet when a hook is installed", function()
+    require("agentdiff.harness.claude").install("user", {
+      home = vim.env.HOME,
+      root = H.project,
+      state_dir = H.state .. "/agentdiff",
+    })
+    H.start({ attribution = "hooks" })
+    settle()
+    eq(0, #notices)
+  end)
+
+  it("stays quiet when the project has the hook", function()
+    require("agentdiff.harness.copilot").install("project", {
+      home = vim.env.HOME,
+      root = H.project,
+      state_dir = H.state .. "/agentdiff",
+    })
+    H.start({ attribution = "hooks" })
+    settle()
+    eq(0, #notices)
+  end)
+
+  it("stays quiet in the writer mode", function()
+    H.start({ attribution = "writer" })
+    settle()
+    eq(0, #notices)
+  end)
+end)
